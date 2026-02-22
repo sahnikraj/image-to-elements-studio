@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Image to Elements Studio | PNG/JPG Design Breakdown</title>
+  <meta name="description" content="Paste or upload PNG/JPG, detect segments, convert to draggable layers, run OCR, and recolor elements." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    body {
+      background:
+        radial-gradient(1300px 700px at -15% -20%, rgba(121, 73, 244, 0.18), transparent 60%),
+        radial-gradient(900px 560px at 110% 0%, rgba(188, 159, 255, 0.3), transparent 65%),
+        #f5f2ff;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(8px);
+    }
+
+    .stage-grid {
+      background-image:
+        linear-gradient(rgba(95, 40, 220, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(95, 40, 220, 0.06) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .layer-handle {
+      cursor: move;
+      user-select: none;
+      transition: box-shadow 0.15s ease;
+    }
+
+    .layer-selected {
+      box-shadow: 0 0 0 2px #6d28d9, 0 12px 30px rgba(91, 33, 182, 0.25);
+    }
+
+    .tiny-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .tiny-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(109, 40, 217, 0.35);
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="text-slate-900 antialiased">
+  <main class="mx-auto max-w-[1400px] p-4 md:p-8">
+    <section class="glass rounded-3xl border border-violet-200 p-5 shadow-[0_20px_60px_rgba(76,29,149,0.15)] md:p-8">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.22em] text-violet-700">V2 Prototype</p>
+          <h1 class="mt-2 text-3xl font-black tracking-tight text-violet-950 md:text-5xl">Image to Elements Studio</h1>
+          <p class="mt-3 max-w-3xl text-sm text-slate-700 md:text-base">
+            Paste or upload a PNG/JPG design. The tool detects background, blocks, icon-like regions, and probable text regions,
+            converts them into draggable layers, runs OCR when requested, and gives recolor controls.
+          </p>
+        </div>
+        <button id="runSegmentation" class="rounded-full bg-violet-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-violet-300 transition hover:bg-violet-700">
+          Detect Elements
+        </button>
+      </div>
+
+      <div class="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <div class="rounded-2xl border border-violet-200 bg-white p-4">
+          <label for="imageInput" class="block text-sm font-bold text-violet-900">Upload PNG/JPG</label>
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/jpg" class="block w-full text-sm text-slate-700 file:mr-3 file:rounded-full file:border-0 file:bg-violet-600 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-violet-700" />
+            <button id="pasteButton" class="rounded-full border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50">Use Clipboard Image</button>
+          </div>
+          <p class="mt-2 text-xs text-slate-600">Tip: You can press <span class="font-semibold">Ctrl/Cmd+V</span> anywhere on this page to paste an image.</p>
+
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <button id="runOcr" class="rounded-full border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50" disabled>Run OCR on Regions</button>
+            <button id="downloadComposite" class="rounded-full border border-violet-300 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50" disabled>Export Composite PNG</button>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-violet-200 bg-white p-4">
+          <h2 class="text-sm font-bold text-violet-900">Auto Palette</h2>
+          <p class="mt-1 text-xs text-slate-600">Top colors extracted from source image. Click to apply tint to selected layer.</p>
+          <div id="palette" class="mt-3 flex flex-wrap gap-2"></div>
+
+          <div class="mt-4 border-t border-violet-100 pt-4">
+            <h3 class="text-sm font-bold text-violet-900">Selected Layer Controls</h3>
+            <div class="mt-3 grid gap-3">
+              <label class="text-xs font-semibold text-slate-700">Tint Color
+                <input id="tintColor" type="color" value="#7c3aed" class="mt-1 h-10 w-full rounded-lg border border-violet-200" disabled />
+              </label>
+              <label class="text-xs font-semibold text-slate-700">Tint Strength
+                <input id="tintStrength" type="range" min="0" max="100" value="0" class="mt-1 w-full" disabled />
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <button id="bringForward" class="rounded-lg border border-violet-200 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-50" disabled>Bring Front</button>
+                <button id="sendBackward" class="rounded-lg border border-violet-200 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-50" disabled>Send Back</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 rounded-2xl border border-violet-200 bg-white p-4">
+        <div id="status" class="text-sm font-semibold text-violet-800">Load an image to start.</div>
+      </div>
+    </section>
+
+    <section class="mt-6 grid gap-4 lg:grid-cols-[330px_1fr]">
+      <aside class="glass tiny-scrollbar max-h-[75vh] overflow-auto rounded-2xl border border-violet-200 p-4">
+        <h2 class="text-base font-black text-violet-950">Detected Layers</h2>
+        <p class="mt-1 text-xs text-slate-600">Click a layer to select. Drag layers in the stage to reposition.</p>
+        <div id="layersList" class="mt-4 space-y-2"></div>
+      </aside>
+
+      <div class="glass tiny-scrollbar overflow-auto rounded-2xl border border-violet-200 p-4">
+        <div id="stageWrapper" class="stage-grid relative mx-auto rounded-2xl border border-violet-200 bg-white"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      sourceImage: null,
+      sourceCanvas: null,
+      sourceWidth: 0,
+      sourceHeight: 0,
+      bgColor: [245, 242, 255],
+      palette: [],
+      layers: [],
+      selectedLayerId: null,
+      stageScale: 1,
+      ocrReady: false,
+      ocrBusy: false,
+      tesseract: null
+    };
+
+    const elements = {
+      imageInput: document.getElementById('imageInput'),
+      pasteButton: document.getElementById('pasteButton'),
+      runSegmentation: document.getElementById('runSegmentation'),
+      runOcr: document.getElementById('runOcr'),
+      downloadComposite: document.getElementById('downloadComposite'),
+      palette: document.getElementById('palette'),
+      layersList: document.getElementById('layersList'),
+      stageWrapper: document.getElementById('stageWrapper'),
+      status: document.getElementById('status'),
+      tintColor: document.getElementById('tintColor'),
+      tintStrength: document.getElementById('tintStrength'),
+      bringForward: document.getElementById('bringForward'),
+      sendBackward: document.getElementById('sendBackward')
+    };
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    const colorDistance = (r1, g1, b1, r2, g2, b2) =>
+      Math.abs(r1 - r2) + Math.abs(g1 - g2) + Math.abs(b1 - b2);
+
+    const rgbToHex = (r, g, b) => `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+
+    const hexToRgb = (hex) => {
+      const v = hex.replace('#', '');
+      return [
+        parseInt(v.slice(0, 2), 16),
+        parseInt(v.slice(2, 4), 16),
+        parseInt(v.slice(4, 6), 16)
+      ];
+    };
+
+    function setStatus(message) {
+      elements.status.textContent = message;
+    }
+
+    async function handleFile(file) {
+      if (!file) return;
+      if (!/^image\/(png|jpeg|jpg)$/i.test(file.type)) {
+        setStatus('Please upload PNG or JPG only.');
+        return;
+      }
+
+      const image = await loadImage(URL.createObjectURL(file));
+      loadSourceImage(image);
+      setStatus(`Loaded ${file.name}. Click "Detect Elements".`);
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function loadSourceImage(img) {
+      const maxDim = 1400;
+      const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+      const width = Math.max(1, Math.round(img.naturalWidth * scale));
+      const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, width, height);
+
+      state.sourceImage = img;
+      state.sourceCanvas = canvas;
+      state.sourceWidth = width;
+      state.sourceHeight = height;
+      state.layers = [];
+      state.selectedLayerId = null;
+      render();
+    }
+
+    function estimateBackgroundColor(imageData, width, height) {
+      const borderPixels = [];
+      const data = imageData.data;
+      const sampleEvery = Math.max(1, Math.floor((width + height) / 300));
+
+      for (let x = 0; x < width; x += sampleEvery) {
+        borderPixels.push(pixelAt(data, width, x, 0));
+        borderPixels.push(pixelAt(data, width, x, height - 1));
+      }
+      for (let y = 0; y < height; y += sampleEvery) {
+        borderPixels.push(pixelAt(data, width, 0, y));
+        borderPixels.push(pixelAt(data, width, width - 1, y));
+      }
+
+      borderPixels.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+      const mid = borderPixels[Math.floor(borderPixels.length / 2)] || [245, 242, 255];
+      return mid;
+    }
+
+    function pixelAt(data, width, x, y) {
+      const i = (y * width + x) * 4;
+      return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+    }
+
+    function buildMask(imageData, width, height, bgColor) {
+      const mask = new Uint8Array(width * height);
+      const data = imageData.data;
+      const threshold = 50;
+
+      for (let i = 0; i < width * height; i += 1) {
+        const o = i * 4;
+        const a = data[o + 3];
+        if (a < 15) continue;
+
+        const d = colorDistance(data[o], data[o + 1], data[o + 2], bgColor[0], bgColor[1], bgColor[2]);
+        if (d > threshold) mask[i] = 1;
+      }
+
+      // Despeckle pass.
+      const cleaned = new Uint8Array(mask);
+      for (let y = 1; y < height - 1; y += 1) {
+        for (let x = 1; x < width - 1; x += 1) {
+          const idx = y * width + x;
+          let neighbors = 0;
+          for (let ny = y - 1; ny <= y + 1; ny += 1) {
+            for (let nx = x - 1; nx <= x + 1; nx += 1) {
+              if (nx === x && ny === y) continue;
+              neighbors += mask[ny * width + nx];
+            }
+          }
+          if (mask[idx] === 1 && neighbors < 2) cleaned[idx] = 0;
+          if (mask[idx] === 0 && neighbors > 6) cleaned[idx] = 1;
+        }
+      }
+      return cleaned;
+    }
+
+    function connectedComponents(mask, width, height, minArea) {
+      const labels = new Int32Array(width * height);
+      const components = [];
+      let label = 0;
+
+      const neighbors = [
+        [-1, -1], [0, -1], [1, -1],
+        [-1, 0],           [1, 0],
+        [-1, 1],  [0, 1],  [1, 1]
+      ];
+
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          const start = y * width + x;
+          if (!mask[start] || labels[start] !== 0) continue;
+
+          label += 1;
+          const queue = [start];
+          labels[start] = label;
+
+          let area = 0;
+          let minX = x;
+          let maxX = x;
+          let minY = y;
+          let maxY = y;
+          const pixels = [];
+
+          while (queue.length) {
+            const idx = queue.pop();
+            const cx = idx % width;
+            const cy = (idx - cx) / width;
+
+            area += 1;
+            pixels.push(idx);
+            if (cx < minX) minX = cx;
+            if (cx > maxX) maxX = cx;
+            if (cy < minY) minY = cy;
+            if (cy > maxY) maxY = cy;
+
+            for (const [dx, dy] of neighbors) {
+              const nx = cx + dx;
+              const ny = cy + dy;
+              if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+              const ni = ny * width + nx;
+              if (!mask[ni] || labels[ni] !== 0) continue;
+              labels[ni] = label;
+              queue.push(ni);
+            }
+          }
+
+          if (area >= minArea) {
+            components.push({ id: label, minX, minY, maxX, maxY, area, pixels });
+          }
+        }
+      }
+
+      return components.sort((a, b) => b.area - a.area);
+    }
+
+    function classifyRegion(comp) {
+      const w = comp.maxX - comp.minX + 1;
+      const h = comp.maxY - comp.minY + 1;
+      const aspect = w / h;
+      const density = comp.area / (w * h);
+
+      if (w > 80 && h > 20 && h < 110 && density > 0.25 && aspect > 2.2) return 'block';
+      if (w < 140 && h < 140 && density > 0.18 && density < 0.72) return 'icon';
+      return 'region';
+    }
+
+    function extractPalette(imageData, topN = 10) {
+      const counts = new Map();
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 16) {
+        const a = data[i + 3];
+        if (a < 120) continue;
+        const r = Math.round(data[i] / 24) * 24;
+        const g = Math.round(data[i + 1] / 24) * 24;
+        const b = Math.round(data[i + 2] / 24) * 24;
+        const key = `${r},${g},${b}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+
+      return [...counts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, topN)
+        .map(([k]) => k.split(',').map(Number));
+    }
+
+    function makeLayerFromComponent(comp, imageData, width, height, idx) {
+      const pad = 2;
+      const x = clamp(comp.minX - pad, 0, width - 1);
+      const y = clamp(comp.minY - pad, 0, height - 1);
+      const w = clamp(comp.maxX - comp.minX + 1 + pad * 2, 1, width - x);
+      const h = clamp(comp.maxY - comp.minY + 1 + pad * 2, 1, height - y);
+
+      const layerCanvas = document.createElement('canvas');
+      layerCanvas.width = w;
+      layerCanvas.height = h;
+      const layerCtx = layerCanvas.getContext('2d', { willReadFrequently: true });
+
+      const out = layerCtx.createImageData(w, h);
+      const src = imageData.data;
+      const dst = out.data;
+
+      for (let py = 0; py < h; py += 1) {
+        for (let px = 0; px < w; px += 1) {
+          const sx = x + px;
+          const sy = y + py;
+          const sIdx = (sy * width + sx) * 4;
+          const dIdx = (py * w + px) * 4;
+
+          const alpha = src[sIdx + 3];
+          const dist = colorDistance(src[sIdx], src[sIdx + 1], src[sIdx + 2], state.bgColor[0], state.bgColor[1], state.bgColor[2]);
+
+          if (alpha > 8 && dist > 44) {
+            dst[dIdx] = src[sIdx];
+            dst[dIdx + 1] = src[sIdx + 1];
+            dst[dIdx + 2] = src[sIdx + 2];
+            dst[dIdx + 3] = alpha;
+          } else {
+            dst[dIdx + 3] = 0;
+          }
+        }
+      }
+
+      layerCtx.putImageData(out, 0, 0);
+
+      const label = classifyRegion(comp);
+      const id = `layer-${idx}-${Date.now()}`;
+      return {
+        id,
+        name: `Layer ${idx + 1}`,
+        kind: label,
+        x,
+        y,
+        w,
+        h,
+        baseImageData: out,
+        basePng: layerCanvas.toDataURL('image/png'),
+        viewPng: layerCanvas.toDataURL('image/png'),
+        ocrText: '',
+        ocrConfidence: 0,
+        tintColor: '#7c3aed',
+        tintStrength: 0
+      };
+    }
+
+    function applyTint(layer) {
+      if (layer.tintStrength <= 0) {
+        layer.viewPng = layer.basePng;
+        return;
+      }
+
+      const [tr, tg, tb] = hexToRgb(layer.tintColor);
+      const f = layer.tintStrength / 100;
+      const source = layer.baseImageData;
+      const out = new ImageData(source.width, source.height);
+
+      for (let i = 0; i < source.data.length; i += 4) {
+        const a = source.data[i + 3];
+        if (!a) continue;
+        const luma = 0.2126 * source.data[i] + 0.7152 * source.data[i + 1] + 0.0722 * source.data[i + 2];
+        const nr = (1 - f) * source.data[i] + f * ((tr * luma) / 255);
+        const ng = (1 - f) * source.data[i + 1] + f * ((tg * luma) / 255);
+        const nb = (1 - f) * source.data[i + 2] + f * ((tb * luma) / 255);
+
+        out.data[i] = clamp(Math.round(nr), 0, 255);
+        out.data[i + 1] = clamp(Math.round(ng), 0, 255);
+        out.data[i + 2] = clamp(Math.round(nb), 0, 255);
+        out.data[i + 3] = a;
+      }
+
+      const c = document.createElement('canvas');
+      c.width = source.width;
+      c.height = source.height;
+      c.getContext('2d').putImageData(out, 0, 0);
+      layer.viewPng = c.toDataURL('image/png');
+    }
+
+    async function detectElements() {
+      if (!state.sourceCanvas) {
+        setStatus('Load an image first.');
+        return;
+      }
+
+      setStatus('Detecting segments...');
+      await tick();
+
+      const ctx = state.sourceCanvas.getContext('2d', { willReadFrequently: true });
+      const imageData = ctx.getImageData(0, 0, state.sourceWidth, state.sourceHeight);
+      state.bgColor = estimateBackgroundColor(imageData, state.sourceWidth, state.sourceHeight);
+
+      const mask = buildMask(imageData, state.sourceWidth, state.sourceHeight, state.bgColor);
+      const minArea = Math.max(140, Math.floor(state.sourceWidth * state.sourceHeight * 0.00035));
+      const comps = connectedComponents(mask, state.sourceWidth, state.sourceHeight, minArea).slice(0, 60);
+
+      state.layers = comps.map((comp, idx) => makeLayerFromComponent(comp, imageData, state.sourceWidth, state.sourceHeight, idx));
+      state.palette = extractPalette(imageData, 12);
+      state.selectedLayerId = state.layers[0]?.id || null;
+
+      elements.runOcr.disabled = !state.layers.length;
+      elements.downloadComposite.disabled = !state.layers.length;
+      setStatus(`Detected ${state.layers.length} layers. Background estimated as ${rgbToHex(...state.bgColor)}.`);
+      render();
+    }
+
+    function tick() {
+      return new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    async function ensureTesseract() {
+      if (state.tesseract) return state.tesseract;
+      setStatus('Loading OCR engine...');
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      state.tesseract = window.Tesseract;
+      return state.tesseract;
+    }
+
+    async function runOcr() {
+      if (!state.layers.length || state.ocrBusy) return;
+
+      state.ocrBusy = true;
+      elements.runOcr.disabled = true;
+
+      try {
+        const T = await ensureTesseract();
+        const candidates = [...state.layers].sort((a, b) => (b.w * b.h) - (a.w * a.h)).slice(0, 14);
+
+        for (let i = 0; i < candidates.length; i += 1) {
+          const layer = candidates[i];
+          setStatus(`OCR ${i + 1}/${candidates.length}...`);
+
+          const result = await T.recognize(layer.basePng, 'eng');
+          const text = (result?.data?.text || '').replace(/\s+/g, ' ').trim();
+          const conf = Number(result?.data?.confidence || 0);
+
+          if (text.length >= 2 && conf >= 35) {
+            layer.ocrText = text;
+            layer.ocrConfidence = Math.round(conf);
+            layer.kind = 'text';
+          }
+
+          renderLayersList();
+        }
+
+        setStatus('OCR pass completed. Text-like layers are tagged.');
+      } catch (error) {
+        console.error(error);
+        setStatus('OCR failed to load or execute.');
+      } finally {
+        state.ocrBusy = false;
+        elements.runOcr.disabled = false;
+      }
+    }
+
+    function getSelectedLayer() {
+      return state.layers.find(l => l.id === state.selectedLayerId) || null;
+    }
+
+    function moveLayerOrder(direction) {
+      const idx = state.layers.findIndex(l => l.id === state.selectedLayerId);
+      if (idx < 0) return;
+
+      if (direction === 'front' && idx < state.layers.length - 1) {
+        const [layer] = state.layers.splice(idx, 1);
+        state.layers.push(layer);
+      }
+
+      if (direction === 'back' && idx > 0) {
+        const [layer] = state.layers.splice(idx, 1);
+        state.layers.unshift(layer);
+      }
+
+      render();
+    }
+
+    function renderPalette() {
+      elements.palette.innerHTML = '';
+      if (!state.palette.length) {
+        elements.palette.innerHTML = '<p class="text-xs text-slate-500">Palette appears after detection.</p>';
+        return;
+      }
+
+      for (const [r, g, b] of state.palette) {
+        const hex = rgbToHex(r, g, b);
+        const btn = document.createElement('button');
+        btn.className = 'h-9 w-9 rounded-full border border-white shadow-md';
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.addEventListener('click', () => {
+          const layer = getSelectedLayer();
+          if (!layer) return;
+          layer.tintColor = hex;
+          elements.tintColor.value = hex;
+          applyTint(layer);
+          renderStage();
+          renderLayersList();
+        });
+        elements.palette.appendChild(btn);
+      }
+    }
+
+    function renderLayersList() {
+      elements.layersList.innerHTML = '';
+      if (!state.layers.length) {
+        elements.layersList.innerHTML = '<p class="text-sm text-slate-500">No layers yet.</p>';
+        return;
+      }
+
+      state.layers.forEach((layer, index) => {
+        const item = document.createElement('button');
+        const selected = layer.id === state.selectedLayerId;
+        item.className = `w-full rounded-xl border p-3 text-left transition ${selected ? 'border-violet-400 bg-violet-50' : 'border-violet-200 bg-white hover:bg-violet-50/60'}`;
+
+        const badges = [`#${index + 1}`, layer.kind];
+        if (layer.ocrText) badges.push(`OCR ${layer.ocrConfidence}%`);
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-sm font-bold text-violet-950">${escapeHtml(layer.name)}</p>
+            <span class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase text-violet-700">${layer.w}x${layer.h}</span>
+          </div>
+          <p class="mt-1 text-xs text-slate-600">${badges.join(' · ')}</p>
+          ${layer.ocrText ? `<p class="mt-2 line-clamp-2 text-xs text-slate-700">${escapeHtml(layer.ocrText)}</p>` : ''}
+        `;
+
+        item.addEventListener('click', () => {
+          state.selectedLayerId = layer.id;
+          render();
+        });
+
+        elements.layersList.appendChild(item);
+      });
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function renderStage() {
+      elements.stageWrapper.innerHTML = '';
+
+      if (!state.sourceCanvas) {
+        elements.stageWrapper.style.width = '100%';
+        elements.stageWrapper.style.height = '420px';
+        elements.stageWrapper.innerHTML = '<p class="absolute inset-0 m-auto h-6 w-fit text-sm font-semibold text-slate-500">Stage appears here after image load.</p>';
+        return;
+      }
+
+      state.stageScale = Math.min(1, 1000 / state.sourceWidth);
+      const sw = Math.round(state.sourceWidth * state.stageScale);
+      const sh = Math.round(state.sourceHeight * state.stageScale);
+
+      elements.stageWrapper.style.width = `${sw}px`;
+      elements.stageWrapper.style.height = `${sh}px`;
+
+      const bg = document.createElement('div');
+      bg.className = 'absolute inset-0 rounded-2xl';
+      bg.style.background = rgbToHex(...state.bgColor);
+      elements.stageWrapper.appendChild(bg);
+
+      const baseImg = document.createElement('img');
+      baseImg.src = state.sourceCanvas.toDataURL('image/png');
+      baseImg.className = 'absolute inset-0 h-full w-full opacity-20 pointer-events-none select-none';
+      elements.stageWrapper.appendChild(baseImg);
+
+      state.layers.forEach(layer => {
+        const img = document.createElement('img');
+        img.src = layer.viewPng;
+        img.dataset.layerId = layer.id;
+        img.className = `layer-handle absolute rounded ${layer.id === state.selectedLayerId ? 'layer-selected' : ''}`;
+        img.style.left = `${Math.round(layer.x * state.stageScale)}px`;
+        img.style.top = `${Math.round(layer.y * state.stageScale)}px`;
+        img.style.width = `${Math.round(layer.w * state.stageScale)}px`;
+        img.style.height = `${Math.round(layer.h * state.stageScale)}px`;
+
+        wireDrag(img, layer);
+        img.addEventListener('click', () => {
+          state.selectedLayerId = layer.id;
+          render();
+        });
+
+        elements.stageWrapper.appendChild(img);
+      });
+    }
+
+    function wireDrag(node, layer) {
+      let dragging = false;
+      let startX = 0;
+      let startY = 0;
+      let baseX = layer.x;
+      let baseY = layer.y;
+
+      node.addEventListener('pointerdown', (event) => {
+        dragging = true;
+        startX = event.clientX;
+        startY = event.clientY;
+        baseX = layer.x;
+        baseY = layer.y;
+        state.selectedLayerId = layer.id;
+        node.setPointerCapture(event.pointerId);
+      });
+
+      node.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        const dx = (event.clientX - startX) / state.stageScale;
+        const dy = (event.clientY - startY) / state.stageScale;
+        layer.x = Math.round(clamp(baseX + dx, 0, state.sourceWidth - layer.w));
+        layer.y = Math.round(clamp(baseY + dy, 0, state.sourceHeight - layer.h));
+        node.style.left = `${Math.round(layer.x * state.stageScale)}px`;
+        node.style.top = `${Math.round(layer.y * state.stageScale)}px`;
+      });
+
+      node.addEventListener('pointerup', () => {
+        if (!dragging) return;
+        dragging = false;
+        renderLayersList();
+      });
+    }
+
+    function renderControls() {
+      const selected = getSelectedLayer();
+      const enabled = Boolean(selected);
+
+      elements.tintColor.disabled = !enabled;
+      elements.tintStrength.disabled = !enabled;
+      elements.bringForward.disabled = !enabled;
+      elements.sendBackward.disabled = !enabled;
+
+      if (selected) {
+        elements.tintColor.value = selected.tintColor;
+        elements.tintStrength.value = String(selected.tintStrength);
+      }
+    }
+
+    function render() {
+      renderPalette();
+      renderLayersList();
+      renderStage();
+      renderControls();
+    }
+
+    async function exportComposite() {
+      if (!state.sourceCanvas || !state.layers.length) return;
+
+      const out = document.createElement('canvas');
+      out.width = state.sourceWidth;
+      out.height = state.sourceHeight;
+      const ctx = out.getContext('2d');
+
+      ctx.fillStyle = rgbToHex(...state.bgColor);
+      ctx.fillRect(0, 0, out.width, out.height);
+
+      for (const layer of state.layers) {
+        const img = await loadImage(layer.viewPng);
+        ctx.drawImage(img, layer.x, layer.y, layer.w, layer.h);
+      }
+
+      const a = document.createElement('a');
+      a.href = out.toDataURL('image/png');
+      a.download = `design-elements-${Date.now()}.png`;
+      a.click();
+    }
+
+    elements.imageInput.addEventListener('change', (event) => {
+      handleFile(event.target.files?.[0]);
+    });
+
+    elements.pasteButton.addEventListener('click', async () => {
+      try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const type = item.types.find(t => t.startsWith('image/'));
+          if (!type) continue;
+          const blob = await item.getType(type);
+          const file = new File([blob], `clipboard.${type.includes('png') ? 'png' : 'jpg'}`, { type });
+          await handleFile(file);
+          return;
+        }
+        setStatus('Clipboard has no image.');
+      } catch {
+        setStatus('Clipboard access was blocked. Try Ctrl/Cmd+V directly.');
+      }
+    });
+
+    document.addEventListener('paste', async (event) => {
+      const items = [...(event.clipboardData?.items || [])];
+      const imageItem = items.find(item => item.type.startsWith('image/'));
+      if (!imageItem) return;
+
+      const file = imageItem.getAsFile();
+      if (!file) return;
+      await handleFile(file);
+    });
+
+    elements.runSegmentation.addEventListener('click', detectElements);
+    elements.runOcr.addEventListener('click', runOcr);
+    elements.downloadComposite.addEventListener('click', exportComposite);
+
+    elements.tintColor.addEventListener('input', () => {
+      const layer = getSelectedLayer();
+      if (!layer) return;
+      layer.tintColor = elements.tintColor.value;
+      applyTint(layer);
+      renderStage();
+      renderLayersList();
+    });
+
+    elements.tintStrength.addEventListener('input', () => {
+      const layer = getSelectedLayer();
+      if (!layer) return;
+      layer.tintStrength = Number(elements.tintStrength.value);
+      applyTint(layer);
+      renderStage();
+      renderLayersList();
+    });
+
+    elements.bringForward.addEventListener('click', () => moveLayerOrder('front'));
+    elements.sendBackward.addEventListener('click', () => moveLayerOrder('back'));
+
+    render();
+  </script>
+</body>
+</html>
