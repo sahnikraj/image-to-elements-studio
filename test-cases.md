@@ -1,49 +1,62 @@
-# Test Cases - Web Paint
+# Test Cases - Web Paint Studio
 
-## 1. Startup and layout
-- Action: Open the app.
-- Expected: Menu bar on top, tool panel on left, white canvas center, palette bottom.
+## 1. Layout and startup
+- Open app in desktop browser.
+- Expect classic paint layout with menu bar, toolbar, canvas, color palette, status bar.
 
-## 2. Pencil tool
-- Action: Select pencil and draw freehand.
-- Expected: Thin continuous strokes in foreground color.
+## 2. Freehand drawing
+- Use pencil, brush, and eraser with different sizes.
+- Expect smooth drawing, eraser uses background color, no console errors.
 
-## 3. Brush and size
-- Action: Select brush, increase size slider, draw.
-- Expected: Thicker stroke than pencil.
+## 3. Airbrush
+- Select airbrush and drag around canvas.
+- Expect sprayed dot pattern with current foreground color.
 
-## 4. Eraser tool
-- Action: Draw shape, switch to eraser, erase part.
-- Expected: Erased pixels become background color.
+## 4. Shape drawing
+- Draw line, rectangle, ellipse, rounded rectangle.
+- Test all shape modes: Outline, Fill, Fill + Outline.
 
-## 5. Line / rectangle / ellipse
-- Action: Draw each shape by drag-release.
-- Expected: Live preview while dragging, final shape committed on release.
+## 5. Fill bucket tolerance
+- Create gradient/noisy area and fill with low/high tolerance values.
+- Expect broader fill at higher tolerance.
 
-## 6. Fill bucket
-- Action: Draw enclosed shape and use fill inside.
-- Expected: Region fills with foreground color.
+## 6. Text and eyedropper
+- Place text with selected font size.
+- Pick colors from canvas using eyedropper.
 
-## 7. Text tool
-- Action: Select text tool, click canvas, enter text in prompt.
-- Expected: Text drawn at clicked position with selected font size and foreground color.
+## 7. Selection workflow
+- Create selection rectangle and move it.
+- Copy/cut/paste/delete selection using menu and keyboard shortcuts.
 
-## 8. Eyedropper
-- Action: Pick a pixel color from canvas.
-- Expected: Foreground swatch updates to sampled color.
+## 8. Clipboard image paste
+- Copy an external image and press Ctrl/Cmd+V.
+- Expect pasted image appears as movable selection.
 
-## 9. Undo / redo
-- Action: Draw 3 actions, undo twice, redo once.
-- Expected: Canvas state moves backward and forward correctly.
+## 9. Undo/redo history
+- Perform multiple edits and test undo/redo repeatedly.
+- Expect deterministic history behavior.
 
-## 10. Open / save
-- Action: Open an image file. Save canvas as PNG.
-- Expected: Imported image appears fitted in canvas; download file is created.
+## 10. Image transforms
+- Flip horizontal, flip vertical, rotate 90° right.
+- Validate orientation changes as expected.
 
-## 11. Palette behavior
-- Action: Left-click a color cell, then right-click another color cell.
-- Expected: Left-click sets foreground; right-click sets background.
+## 11. Filters
+- Apply invert colors and grayscale.
+- Confirm visual output is correct.
 
-## 12. Zoom
-- Action: Change zoom to 200% and 50%.
-- Expected: Canvas scales visually while preserving drawing behavior.
+## 12. Canvas resize
+- Resize canvas to larger and smaller dimensions.
+- Confirm existing drawing is retained/cropped correctly.
+
+## 13. File operations
+- Open local image.
+- Save PNG and JPG.
+- Verify downloaded files are valid and include visible content.
+
+## 14. Zoom and grid
+- Test zoom levels 50% to 800%.
+- Toggle grid and confirm it appears only at high zoom.
+
+## 15. Mobile basic check
+- Open on mobile browser.
+- Ensure layout remains functional (single-column tools allowed).

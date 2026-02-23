@@ -1,14 +1,18 @@
-# Web Paint (MS Paint Style)
+# Web Paint Studio (Classic MS Paint Style)
 
-A browser-based painting app styled like classic MS Paint.
+A browser-based paint app inspired by classic MS Paint UI and interactions.
 
-## Implemented features
-- Classic desktop-style layout: menu bar, left tools, canvas area, bottom palette.
-- Tools: pencil, brush, eraser, line, rectangle, ellipse, fill bucket, text, eyedropper.
-- Utility actions: open image, save PNG, clear canvas.
-- Edit actions: undo and redo.
-- Drawing controls: brush size, text size, zoom.
-- Color system: foreground/background swatches, palette with left-click/right-click behavior.
+## Core features implemented
+- Classic windowed layout with title bar, menu bar, left tool panel, central canvas, and bottom palette.
+- Drawing tools: pencil, brush, airbrush, eraser, line, rectangle, ellipse, rounded rectangle.
+- Utility tools: fill bucket (with tolerance), text, eyedropper, selection tool.
+- Selection workflow: drag selection, move selection, copy/cut/paste selection, delete selection.
+- File actions: new, open image, save PNG, save JPG, paste image from clipboard.
+- Edit actions: undo/redo with history snapshots.
+- Image actions: resize canvas, flip horizontal/vertical, rotate 90° right, clear image.
+- Color actions: swap FG/BG, custom color picker, invert colors, grayscale.
+- View actions: zoom controls, pixel grid toggle.
+- Keyboard shortcuts for common actions.
 
 ## Run locally
 ```bash
@@ -17,11 +21,21 @@ python3 -m http.server 8080
 ```
 Open `http://localhost:8080`.
 
-## Keyboard shortcuts
+## Shortcuts
+- `Ctrl/Cmd + N`: New
+- `Ctrl/Cmd + O`: Open
+- `Ctrl/Cmd + S`: Save PNG
 - `Ctrl/Cmd + Z`: Undo
 - `Ctrl/Cmd + Y`: Redo
-- `Ctrl/Cmd + S`: Save PNG
-- `Ctrl/Cmd + O`: Open image
+- `Ctrl/Cmd + C`: Copy selection
+- `Ctrl/Cmd + X`: Cut selection
+- `Ctrl/Cmd + V`: Paste selection or clipboard image
+- `Delete`: Delete selection
+- `G`: Toggle pixel grid
+- `X`: Swap foreground/background colors
 
-## Notes
-- Selection tool currently draws selection box only. Full move/crop selection can be added next.
+## Next layer of enhancements
+- Lasso/free-form selection.
+- Resize and rotate selected region.
+- Polygon and curve tools.
+- Multi-step action replay / macro recording.
