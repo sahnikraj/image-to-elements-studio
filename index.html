@@ -276,6 +276,30 @@
       align-items: center;
     }
 
+    .titlebar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .title-links {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      font-weight: 600;
+    }
+
+    .title-links a {
+      color: #f3f6ff;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 1px;
+    }
+
+    .title-links a:hover {
+      border-bottom-color: #f3f6ff;
+    }
+
     .menu-bar {
       display: flex;
       gap: 10px;
@@ -618,7 +642,15 @@
   <div class="window">
     <div class="titlebar">
       <span>Web Paint Studio</span>
-      <span id="titleMeta">Untitled - 1200x700</span>
+      <div class="titlebar-right">
+        <nav class="title-links" aria-label="Site pages">
+          <a href="/what-it-is.html">What It Is</a>
+          <a href="/key-features.html">Key Features</a>
+          <a href="/use-cases.html">Use Cases</a>
+          <a href="/faq.html">FAQ</a>
+        </nav>
+        <span id="titleMeta">Untitled - 1200x700</span>
+      </div>
     </div>
 
     <div class="menu-bar" id="menuBar">
