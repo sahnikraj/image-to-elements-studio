@@ -1,41 +1,49 @@
-# Test Cases
+# Test Cases - Web Paint
 
-## 1. Upload image
-- Action: Upload PNG and JPG files.
-- Expected: Image loads, status updates, no JS errors.
+## 1. Startup and layout
+- Action: Open the app.
+- Expected: Menu bar on top, tool panel on left, white canvas center, palette bottom.
 
-## 2. Clipboard paste
-- Action: Copy image and paste via Ctrl/Cmd+V.
-- Expected: Image loads from clipboard.
+## 2. Pencil tool
+- Action: Select pencil and draw freehand.
+- Expected: Thin continuous strokes in foreground color.
 
-## 3. Segmentation
-- Action: Click `Detect Elements`.
-- Expected: Layer list appears, stage shows draggable extracted elements.
+## 3. Brush and size
+- Action: Select brush, increase size slider, draw.
+- Expected: Thicker stroke than pencil.
 
-## 4. Drag and drop
-- Action: Drag 3-4 layers around the stage.
-- Expected: Layer position updates smoothly.
+## 4. Eraser tool
+- Action: Draw shape, switch to eraser, erase part.
+- Expected: Erased pixels become background color.
 
-## 5. Palette apply
-- Action: Select a layer and click palette colors.
-- Expected: Selected layer recolors (tinted output).
+## 5. Line / rectangle / ellipse
+- Action: Draw each shape by drag-release.
+- Expected: Live preview while dragging, final shape committed on release.
 
-## 6. Tint strength slider
-- Action: Move slider from 0 to 100 for selected layer.
-- Expected: Color intensity changes progressively.
+## 6. Fill bucket
+- Action: Draw enclosed shape and use fill inside.
+- Expected: Region fills with foreground color.
 
-## 7. OCR
-- Action: Click `Run OCR on Regions`.
-- Expected: Some layers tagged as `text` with confidence and extracted text.
+## 7. Text tool
+- Action: Select text tool, click canvas, enter text in prompt.
+- Expected: Text drawn at clicked position with selected font size and foreground color.
 
-## 8. Layer ordering
-- Action: Use `Bring Front` and `Send Back`.
-- Expected: Stacking order changes in stage.
+## 8. Eyedropper
+- Action: Pick a pixel color from canvas.
+- Expected: Foreground swatch updates to sampled color.
 
-## 9. Export
-- Action: Click `Export Composite PNG`.
-- Expected: Downloaded PNG reflects current layer positions and colors.
+## 9. Undo / redo
+- Action: Draw 3 actions, undo twice, redo once.
+- Expected: Canvas state moves backward and forward correctly.
 
-## 10. Performance
-- Action: Test with large image (~4K).
-- Expected: App remains responsive; status messages show progress.
+## 10. Open / save
+- Action: Open an image file. Save canvas as PNG.
+- Expected: Imported image appears fitted in canvas; download file is created.
+
+## 11. Palette behavior
+- Action: Left-click a color cell, then right-click another color cell.
+- Expected: Left-click sets foreground; right-click sets background.
+
+## 12. Zoom
+- Action: Change zoom to 200% and 50%.
+- Expected: Canvas scales visually while preserving drawing behavior.
