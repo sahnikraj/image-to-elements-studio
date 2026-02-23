@@ -491,14 +491,14 @@
   <script>
     const TOOLS = [
       { id: 'select', icon: '⬚', title: 'Select' },
-      { id: 'freeselect', icon: 'LS', title: 'Free-form Select' },
+      { id: 'freeselect', icon: '◌', title: 'Free-form Select' },
       { id: 'pencil', icon: '✎', title: 'Pencil' },
       { id: 'brush', icon: '🖌', title: 'Paint Brush' },
-      { id: 'airbrush', icon: 'SP', title: 'Spray' },
+      { id: 'airbrush', icon: '∴', title: 'Spray' },
       { id: 'eraser', icon: '⌫', title: 'Eraser' },
       { id: 'line', icon: '／', title: 'Line' },
       { id: 'curve', icon: '∿', title: 'Curve' },
-      { id: 'polygon', icon: 'PG', title: 'Polygon' },
+      { id: 'polygon', icon: '⬠', title: 'Polygon' },
       { id: 'rect', icon: '▭', title: 'Rectangle' },
       { id: 'ellipse', icon: '◯', title: 'Ellipse' },
       { id: 'roundrect', icon: '▢', title: 'Rounded Rectangle' },
@@ -603,7 +603,7 @@
       TOOLS.forEach((tool) => {
         const btn = document.createElement('button');
         btn.className = `tool ${tool.id === state.tool ? 'active' : ''}`;
-        if ((tool.icon || '').length > 1) {
+        if (/^[A-Za-z0-9]{2,}$/.test(tool.icon || '')) {
           btn.classList.add('tool-label');
         }
         btn.textContent = tool.icon;
