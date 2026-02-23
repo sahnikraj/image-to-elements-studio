@@ -192,6 +192,12 @@
       padding: 0;
     }
 
+    .tool.tool-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
     .tool.active {
       border-top: 1px solid var(--shadow-dark);
       border-left: 1px solid var(--shadow-dark);
@@ -483,7 +489,7 @@
       { id: 'select', icon: '⬚', title: 'Select' },
       { id: 'pencil', icon: '✎', title: 'Pencil' },
       { id: 'brush', icon: '🖌', title: 'Paint Brush' },
-      { id: 'airbrush', icon: '⠿', title: 'Spray' },
+      { id: 'airbrush', icon: 'SP', title: 'Spray' },
       { id: 'eraser', icon: '⌫', title: 'Eraser' },
       { id: 'line', icon: '／', title: 'Line' },
       { id: 'curve', icon: '∿', title: 'Curve' },
@@ -590,6 +596,9 @@
       TOOLS.forEach((tool) => {
         const btn = document.createElement('button');
         btn.className = `tool ${tool.id === state.tool ? 'active' : ''}`;
+        if ((tool.icon || '').length > 1) {
+          btn.classList.add('tool-label');
+        }
         btn.textContent = tool.icon;
         btn.title = tool.title;
         btn.dataset.tool = tool.id;
@@ -637,10 +646,16 @@
       els.sprayDensity.addEventListener('input', () => {
         state.sprayDensity = Number(els.sprayDensity.value);
         els.sprayDensityValue.textContent = String(state.sprayDensity);
+        if (state.tool === 'airbrush') {
+          setStatus(`Tool: Spray (Density ${state.sprayDensity}, Radius ${state.sprayRadius})`);
+        }
       });
       els.sprayRadius.addEventListener('input', () => {
         state.sprayRadius = Number(els.sprayRadius.value);
         els.sprayRadiusValue.textContent = String(state.sprayRadius);
+        if (state.tool === 'airbrush') {
+          setStatus(`Tool: Spray (Density ${state.sprayDensity}, Radius ${state.sprayRadius})`);
+        }
       });
       els.transparentSelection.addEventListener('change', () => { state.transparentSelection = els.transparentSelection.checked; });
 
@@ -864,7 +879,12 @@
       }
       state.tool = toolId;
       updateToolButtons();
-      setStatus(`Tool: ${toolId}`);
+      const activeTool = TOOLS.find((tool) => tool.id === toolId);
+      if (toolId === 'airbrush') {
+        setStatus(`Tool: ${activeTool ? activeTool.title : toolId} (Density ${state.sprayDensity}, Radius ${state.sprayRadius})`);
+      } else {
+        setStatus(`Tool: ${activeTool ? activeTool.title : toolId}`);
+      }
     }
 
     function updateToolButtons() {
@@ -875,6 +895,8 @@
         holder.style.cursor = 'copy';
       } else if (state.tool === 'magnifier') {
         holder.style.cursor = 'zoom-in';
+      } else if (state.tool === 'airbrush') {
+        holder.style.cursor = 'crosshair';
       } else if (state.tool === 'select') {
         holder.style.cursor = 'crosshair';
       } else {
@@ -1243,19 +1265,24 @@
     }
 
     function sprayAt(x, y) {
-      const count = Math.max(5, Math.floor(state.sprayDensity * (1 + state.size * 0.25)));
-      const radius = Math.max(1, state.sprayRadius);
-      const dotSize = Math.max(1, Math.floor(state.size / 8));
+      const radius = Math.max(2, Math.floor(state.sprayRadius));
+      const density = clamp(state.sprayDensity, 5, 120);
+      const count = Math.max(12, Math.floor(Math.pow(density, 1.18) * 1.8));
+      const dotSize = Math.max(1, Math.floor(state.size / 5));
       ctx.fillStyle = state.fg;
+      ctx.save();
+      ctx.globalAlpha = clamp(0.18 + density / 180, 0.18, 0.86);
       for (let i = 0; i < count; i += 1) {
         const angle = Math.random() * Math.PI * 2;
         const dist = Math.sqrt(Math.random()) * radius;
-        const px = Math.round(x + Math.cos(angle) * dist);
-        const py = Math.round(y + Math.sin(angle) * dist);
+        const jitter = (Math.random() - 0.5) * Math.max(1, radius * 0.14);
+        const px = Math.round(x + Math.cos(angle) * dist + jitter);
+        const py = Math.round(y + Math.sin(angle) * dist + jitter);
         if (px >= 0 && py >= 0 && px < canvas.width && py < canvas.height) {
           ctx.fillRect(px, py, dotSize, dotSize);
         }
       }
+      ctx.restore();
     }
 
     function floodFill(x, y, hex, tolerance) {
