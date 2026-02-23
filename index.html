@@ -857,10 +857,20 @@
       buildTools();
       buildPalette();
       wireUI();
-      pushHistory();
+      scheduleIdleTask(() => {
+        if (state.history.length === 0) pushHistory();
+      }, 1500);
       refreshSwatches();
       updateMeta();
       setStatus('Ready. Right-click palette for background color.');
+    }
+
+    function scheduleIdleTask(fn, timeout = 1000) {
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => fn(), { timeout });
+      } else {
+        window.setTimeout(fn, 0);
+      }
     }
 
     function buildTools() {
@@ -887,23 +897,35 @@
 
     function buildPalette() {
       els.palette.innerHTML = '';
-      COLORS.forEach((color) => {
-        const cell = document.createElement('button');
-        cell.className = 'color';
-        cell.style.background = color;
-        cell.title = color;
-        cell.addEventListener('click', (event) => {
-          event.preventDefault();
-          state.fg = color;
-          refreshSwatches();
-        });
-        cell.addEventListener('contextmenu', (event) => {
-          event.preventDefault();
-          state.bg = color;
-          refreshSwatches();
-        });
-        els.palette.appendChild(cell);
-      });
+      let idx = 0;
+      const batchSize = 12;
+      const renderBatch = () => {
+        const frag = document.createDocumentFragment();
+        const end = Math.min(COLORS.length, idx + batchSize);
+        for (; idx < end; idx += 1) {
+          const color = COLORS[idx];
+          const cell = document.createElement('button');
+          cell.className = 'color';
+          cell.style.background = color;
+          cell.title = color;
+          cell.addEventListener('click', (event) => {
+            event.preventDefault();
+            state.fg = color;
+            refreshSwatches();
+          });
+          cell.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            state.bg = color;
+            refreshSwatches();
+          });
+          frag.appendChild(cell);
+        }
+        els.palette.appendChild(frag);
+        if (idx < COLORS.length) {
+          window.requestAnimationFrame(renderBatch);
+        }
+      };
+      window.requestAnimationFrame(renderBatch);
     }
 
     function wireUI() {
@@ -970,8 +992,10 @@
       });
 
       wireMenus();
-      wireShortcuts();
-      wireClipboard();
+      scheduleIdleTask(() => {
+        wireShortcuts();
+        wireClipboard();
+      }, 2000);
     }
 
     function wireMenus() {
