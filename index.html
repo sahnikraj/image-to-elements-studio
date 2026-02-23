@@ -198,6 +198,24 @@
       letter-spacing: 0.2px;
     }
 
+    .tool-icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 18px 18px;
+      image-rendering: pixelated;
+      pointer-events: none;
+    }
+
+    .tool-icon.fallback {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 18px;
+      text-align: center;
+    }
+
     .tool.active {
       border-top: 1px solid var(--shadow-dark);
       border-left: 1px solid var(--shadow-dark);
@@ -489,23 +507,46 @@
   </div>
 
   <script>
+    function svgIcon(svg) {
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }
+
+    const TOOL_ICON = {
+      select: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect x="2" y="2" width="12" height="12" fill="none" stroke="#111" stroke-width="1" stroke-dasharray="2 2"/></svg>`),
+      freeselect: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M2 4 L6 2 L8 6 L13 3 L10 8 L14 12 L8 11 L5 14 L4 9 L2 4 Z" fill="none" stroke="#111" stroke-width="1" stroke-dasharray="1.5 1.5"/></svg>`),
+      pencil: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><polygon points="3,13 7,12 13,6 10,3 4,9" fill="#f2d95c" stroke="#111" stroke-width="1"/><polygon points="13,6 14,5 11,2 10,3" fill="#e46b6b" stroke="#111" stroke-width="1"/><polygon points="3,13 4,9 2,11" fill="#d8d8d8" stroke="#111" stroke-width="1"/></svg>`),
+      brush: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect x="7" y="2" width="3" height="8" fill="#b7e8f0" stroke="#111" stroke-width="1"/><rect x="6" y="10" width="5" height="3" fill="#333" stroke="#111" stroke-width="1"/><rect x="5" y="13" width="7" height="1.5" fill="#f0db58" stroke="#111" stroke-width="0.8"/></svg>`),
+      airbrush: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="4" cy="11" r="1" fill="#1f57ff"/><circle cx="6" cy="9" r="1" fill="#1f57ff"/><circle cx="8" cy="11" r="1" fill="#1f57ff"/><circle cx="5" cy="7" r="1" fill="#1f57ff"/><rect x="10" y="4" width="4" height="7" transform="rotate(-30 10 4)" fill="#8b8b8b" stroke="#111" stroke-width="1"/></svg>`),
+      eraser: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><polygon points="2,11 8,4 14,7 8,14" fill="#f3e266" stroke="#111" stroke-width="1"/><line x1="6" y1="6" x2="11" y2="9" stroke="#fff" stroke-width="1"/></svg>`),
+      line: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><line x1="2" y1="13" x2="14" y2="3" stroke="#111" stroke-width="1.5"/></svg>`),
+      curve: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M2 12 C5 6, 9 13, 14 4" fill="none" stroke="#111" stroke-width="1.5"/></svg>`),
+      polygon: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><polyline points="2,12 6,4 11,4 8,9 13,12 3,12" fill="none" stroke="#111" stroke-width="1.3"/></svg>`),
+      rect: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect x="2" y="4" width="12" height="8" fill="none" stroke="#111" stroke-width="1.3"/></svg>`),
+      ellipse: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><ellipse cx="8" cy="8" rx="6" ry="4.5" fill="none" stroke="#111" stroke-width="1.3"/></svg>`),
+      roundrect: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect x="2" y="4" width="12" height="8" rx="2" ry="2" fill="none" stroke="#111" stroke-width="1.3"/></svg>`),
+      fill: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><polygon points="4,4 9,2 13,7 8,9" fill="#9ad3de" stroke="#111" stroke-width="1"/><path d="M2 11 C3 9, 5 9, 6 11 C5 13, 3 13, 2 11 Z" fill="#00d5ff" stroke="#0a67ad" stroke-width="0.8"/></svg>`),
+      text: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><text x="3" y="13" font-size="13" font-family="Tahoma,Arial,sans-serif" font-weight="700" fill="#111">A</text></svg>`),
+      eyedropper: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><line x1="11.5" y1="3.5" x2="5.5" y2="9.5" stroke="#111" stroke-width="2"/><circle cx="12.5" cy="2.5" r="1.2" fill="#111"/><path d="M4 10 C5 8.5, 7 8.5, 8 10 C7 12, 5 12, 4 10 Z" fill="#29d6ff" stroke="#0a67ad" stroke-width="0.8"/></svg>`),
+      magnifier: svgIcon(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><circle cx="7" cy="7" r="4" fill="none" stroke="#111" stroke-width="1.5"/><line x1="10" y1="10" x2="14" y2="14" stroke="#111" stroke-width="1.5"/></svg>`)
+    };
+
     const TOOLS = [
-      { id: 'select', icon: '⬚', title: 'Select' },
-      { id: 'freeselect', icon: '◌', title: 'Free-form Select' },
-      { id: 'pencil', icon: '✎', title: 'Pencil' },
-      { id: 'brush', icon: '🖌', title: 'Paint Brush' },
-      { id: 'airbrush', icon: '∴', title: 'Spray' },
-      { id: 'eraser', icon: '⌫', title: 'Eraser' },
-      { id: 'line', icon: '／', title: 'Line' },
-      { id: 'curve', icon: '∿', title: 'Curve' },
-      { id: 'polygon', icon: '⬠', title: 'Polygon' },
-      { id: 'rect', icon: '▭', title: 'Rectangle' },
-      { id: 'ellipse', icon: '◯', title: 'Ellipse' },
-      { id: 'roundrect', icon: '▢', title: 'Rounded Rectangle' },
-      { id: 'fill', icon: '▧', title: 'Fill Bucket' },
-      { id: 'text', icon: 'A', title: 'Text' },
-      { id: 'eyedropper', icon: '◉', title: 'Eyedropper' },
-      { id: 'magnifier', icon: '🔍', title: 'Magnifier' }
+      { id: 'select', icon: TOOL_ICON.select, title: 'Select' },
+      { id: 'freeselect', icon: TOOL_ICON.freeselect, title: 'Free-form Select' },
+      { id: 'pencil', icon: TOOL_ICON.pencil, title: 'Pencil' },
+      { id: 'brush', icon: TOOL_ICON.brush, title: 'Paint Brush' },
+      { id: 'airbrush', icon: TOOL_ICON.airbrush, title: 'Spray' },
+      { id: 'eraser', icon: TOOL_ICON.eraser, title: 'Eraser' },
+      { id: 'line', icon: TOOL_ICON.line, title: 'Line' },
+      { id: 'curve', icon: TOOL_ICON.curve, title: 'Curve' },
+      { id: 'polygon', icon: TOOL_ICON.polygon, title: 'Polygon' },
+      { id: 'rect', icon: TOOL_ICON.rect, title: 'Rectangle' },
+      { id: 'ellipse', icon: TOOL_ICON.ellipse, title: 'Ellipse' },
+      { id: 'roundrect', icon: TOOL_ICON.roundrect, title: 'Rounded Rectangle' },
+      { id: 'fill', icon: TOOL_ICON.fill, title: 'Fill Bucket' },
+      { id: 'text', icon: TOOL_ICON.text, title: 'Text' },
+      { id: 'eyedropper', icon: TOOL_ICON.eyedropper, title: 'Eyedropper' },
+      { id: 'magnifier', icon: TOOL_ICON.magnifier, title: 'Magnifier' }
     ];
 
     const COLORS = [
@@ -603,10 +644,16 @@
       TOOLS.forEach((tool) => {
         const btn = document.createElement('button');
         btn.className = `tool ${tool.id === state.tool ? 'active' : ''}`;
-        if (/^[A-Za-z0-9]{2,}$/.test(tool.icon || '')) {
-          btn.classList.add('tool-label');
+        btn.textContent = '';
+        const iconEl = document.createElement('span');
+        iconEl.className = 'tool-icon';
+        if ((tool.icon || '').startsWith('data:image/')) {
+          iconEl.style.backgroundImage = `url("${tool.icon}")`;
+        } else {
+          iconEl.classList.add('fallback');
+          iconEl.textContent = tool.icon || '?';
         }
-        btn.textContent = tool.icon;
+        btn.appendChild(iconEl);
         btn.title = tool.title;
         btn.dataset.tool = tool.id;
         btn.addEventListener('click', () => handleToolAction(tool.id));
