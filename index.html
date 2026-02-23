@@ -159,7 +159,7 @@
     .workspace {
       min-height: 0;
       display: grid;
-      grid-template-columns: 148px 1fr;
+      grid-template-columns: 182px 1fr;
     }
 
     .toolbar {
@@ -211,6 +211,9 @@
     .tool-config label {
       display: grid;
       gap: 2px;
+      white-space: normal;
+      line-height: 1.2;
+      word-break: break-word;
     }
 
     .canvas-shell {
@@ -283,6 +286,7 @@
       font-family: Tahoma, "MS Sans Serif", sans-serif;
       white-space: pre;
       user-select: text;
+      -webkit-user-select: text;
     }
 
     .selection.dragging {
@@ -350,10 +354,11 @@
     .hidden { display: none; }
 
     @media (max-width: 1024px) {
-      .workspace { grid-template-columns: 124px 1fr; }
+      .workspace { grid-template-columns: 158px 1fr; }
       .tool-grid { grid-template-columns: repeat(2, 28px); }
       .palette { grid-template-columns: repeat(14, minmax(14px, 1fr)); }
       .titlebar { font-size: 11px; }
+      .tool-config { font-size: 10px; }
     }
   </style>
 </head>
@@ -441,8 +446,8 @@
       <aside class="toolbar">
         <div class="tool-grid" id="toolGrid"></div>
         <div class="tool-config">
-          <label>Spray Density <input class="bevel-input" id="sprayDensity" type="range" min="5" max="80" value="24" /></label>
-          <label>Spray Radius <input class="bevel-input" id="sprayRadius" type="range" min="2" max="80" value="18" /></label>
+          <label>Spray Density <span id="sprayDensityValue">24</span><input class="bevel-input" id="sprayDensity" type="range" min="5" max="120" value="24" /></label>
+          <label>Spray Radius <span id="sprayRadiusValue">18</span><input class="bevel-input" id="sprayRadius" type="range" min="2" max="120" value="18" /></label>
           <label><input id="transparentSelection" type="checkbox" /> Transparent selection</label>
         </div>
       </aside>
@@ -453,7 +458,7 @@
             <canvas id="paintCanvas" width="1200" height="700"></canvas>
             <canvas id="previewCanvas" width="1200" height="700"></canvas>
             <div class="selection" id="selection"></div>
-            <div id="textEditor" class="text-editor hidden" contenteditable="true"></div>
+            <textarea id="textEditor" class="text-editor hidden" spellcheck="false"></textarea>
           </div>
         </div>
       </section>
@@ -556,6 +561,8 @@
       fillTolerance: document.getElementById('fillTolerance'),
       sprayDensity: document.getElementById('sprayDensity'),
       sprayRadius: document.getElementById('sprayRadius'),
+      sprayDensityValue: document.getElementById('sprayDensityValue'),
+      sprayRadiusValue: document.getElementById('sprayRadiusValue'),
       fileInput: document.getElementById('fileInput'),
       customColor: document.getElementById('customColor'),
       menuBar: document.getElementById('menuBar'),
@@ -627,8 +634,14 @@
       els.zoom.addEventListener('change', () => { setZoom(Number(els.zoom.value)); });
       els.shapeMode.addEventListener('change', () => { state.shapeMode = els.shapeMode.value; });
       els.fillTolerance.addEventListener('input', () => { state.fillTolerance = Number(els.fillTolerance.value); });
-      els.sprayDensity.addEventListener('input', () => { state.sprayDensity = Number(els.sprayDensity.value); });
-      els.sprayRadius.addEventListener('input', () => { state.sprayRadius = Number(els.sprayRadius.value); });
+      els.sprayDensity.addEventListener('input', () => {
+        state.sprayDensity = Number(els.sprayDensity.value);
+        els.sprayDensityValue.textContent = String(state.sprayDensity);
+      });
+      els.sprayRadius.addEventListener('input', () => {
+        state.sprayRadius = Number(els.sprayRadius.value);
+        els.sprayRadiusValue.textContent = String(state.sprayRadius);
+      });
       els.transparentSelection.addEventListener('change', () => { state.transparentSelection = els.transparentSelection.checked; });
 
       els.fileInput.addEventListener('change', async (event) => {
@@ -892,23 +905,16 @@
       te.style.height = `${Math.max(24, state.fontSize + 8)}px`;
       te.style.fontSize = `${state.fontSize}px`;
       te.style.color = state.fg;
-      te.textContent = '';
+      te.value = '';
       state.textEditor = { x, y };
       te.focus();
-
-      const sel = window.getSelection();
-      const range = document.createRange();
-      range.selectNodeContents(te);
-      range.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(range);
       setStatus('Type text. Enter to commit, Esc to cancel.');
     }
 
     function commitTextEditor(push) {
       if (!state.textEditor) return;
       const te = els.textEditor;
-      const text = te.textContent || '';
+      const text = te.value || '';
       if (text.trim().length) {
         const x = parseInt(te.style.left, 10) || state.textEditor.x || 0;
         const y = parseInt(te.style.top, 10) || state.textEditor.y || 0;
@@ -923,14 +929,14 @@
         });
         if (push) pushHistory();
       }
-      te.textContent = '';
+      te.value = '';
       te.classList.add('hidden');
       state.textEditor = null;
     }
 
     function cancelTextEditor() {
       if (!state.textEditor) return;
-      els.textEditor.textContent = '';
+      els.textEditor.value = '';
       els.textEditor.classList.add('hidden');
       state.textEditor = null;
       setStatus('Text canceled');
@@ -1014,7 +1020,7 @@
 
       if (state.tool === 'airbrush') {
         sprayAt(p.x, p.y);
-        state.sprayTimer = window.setInterval(() => sprayAt(state.lastX, state.lastY), 35);
+        state.sprayTimer = window.setInterval(() => sprayAt(state.lastX, state.lastY), 24);
       }
 
       if (state.tool === 'curve' && state.curveDraft && state.curveDraft.awaitControl) {
@@ -1237,16 +1243,17 @@
     }
 
     function sprayAt(x, y) {
-      const count = state.sprayDensity;
-      const radius = state.sprayRadius;
+      const count = Math.max(5, Math.floor(state.sprayDensity * (1 + state.size * 0.25)));
+      const radius = Math.max(1, state.sprayRadius);
+      const dotSize = Math.max(1, Math.floor(state.size / 8));
       ctx.fillStyle = state.fg;
       for (let i = 0; i < count; i += 1) {
         const angle = Math.random() * Math.PI * 2;
-        const dist = Math.random() * radius;
+        const dist = Math.sqrt(Math.random()) * radius;
         const px = Math.round(x + Math.cos(angle) * dist);
         const py = Math.round(y + Math.sin(angle) * dist);
         if (px >= 0 && py >= 0 && px < canvas.width && py < canvas.height) {
-          ctx.fillRect(px, py, 1, 1);
+          ctx.fillRect(px, py, dotSize, dotSize);
         }
       }
     }
