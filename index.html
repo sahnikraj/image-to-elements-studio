@@ -410,10 +410,14 @@
 
       <div class="menu-item" data-menu="image">Image
         <div class="dropdown">
+          <button class="drop-btn" data-action="crop-selection">Crop to Selection <span>Ctrl+Shift+X</span></button>
           <button class="drop-btn" data-action="resize-canvas">Resize Canvas <span></span></button>
+          <button class="drop-btn" data-action="resize-skew">Resize / Skew <span></span></button>
           <button class="drop-btn" data-action="flip-horizontal">Flip Horizontal <span></span></button>
           <button class="drop-btn" data-action="flip-vertical">Flip Vertical <span></span></button>
+          <button class="drop-btn" data-action="rotate-left">Rotate 90° Left <span></span></button>
           <button class="drop-btn" data-action="rotate-right">Rotate 90° Right <span></span></button>
+          <button class="drop-btn" data-action="rotate-180">Rotate 180° <span></span></button>
           <div class="drop-sep"></div>
           <button class="drop-btn" data-action="clear">Clear Image <span></span></button>
         </div>
@@ -487,12 +491,14 @@
   <script>
     const TOOLS = [
       { id: 'select', icon: '⬚', title: 'Select' },
+      { id: 'freeselect', icon: 'LS', title: 'Free-form Select' },
       { id: 'pencil', icon: '✎', title: 'Pencil' },
       { id: 'brush', icon: '🖌', title: 'Paint Brush' },
       { id: 'airbrush', icon: 'SP', title: 'Spray' },
       { id: 'eraser', icon: '⌫', title: 'Eraser' },
       { id: 'line', icon: '／', title: 'Line' },
       { id: 'curve', icon: '∿', title: 'Curve' },
+      { id: 'polygon', icon: 'PG', title: 'Polygon' },
       { id: 'rect', icon: '▭', title: 'Rectangle' },
       { id: 'ellipse', icon: '◯', title: 'Ellipse' },
       { id: 'roundrect', icon: '▢', title: 'Rounded Rectangle' },
@@ -549,6 +555,7 @@
       selectionDrag: null,
       transparentSelection: false,
       curveDraft: null,
+      freeSelectPath: null,
       textEditor: null,
       sprayTimer: null
     };
@@ -779,6 +786,12 @@
           return;
         }
 
+        if (cmd && event.shiftKey && key === 'x') {
+          event.preventDefault();
+          cropToSelection();
+          return;
+        }
+
         if (cmd && key === 'x') {
           if (state.selection) {
             event.preventDefault();
@@ -854,10 +867,14 @@
         case 'zoom-out': return changeZoom(-1);
         case 'zoom-reset': return setZoom(1);
         case 'toggle-grid': return toggleGrid();
+        case 'crop-selection': return cropToSelection();
         case 'resize-canvas': return resizeCanvasPrompt();
+        case 'resize-skew': return resizeSkewPrompt();
         case 'flip-horizontal': return flipCanvas('h');
         case 'flip-vertical': return flipCanvas('v');
+        case 'rotate-left': return rotateCanvasLeft();
         case 'rotate-right': return rotateCanvasRight();
+        case 'rotate-180': return rotateCanvas180();
         case 'clear': return clearCanvas();
         case 'swap-colors': return swapColors();
         case 'pick-custom': return els.customColor.click();
@@ -1005,7 +1022,7 @@
       state.lastX = p.x;
       state.lastY = p.y;
 
-      if (state.tool !== 'select' && state.selection) {
+      if (!['select', 'freeselect'].includes(state.tool) && state.selection) {
         stampSelection(true);
       }
 
@@ -1049,6 +1066,11 @@
         state.startX = p.x;
         state.startY = p.y;
       }
+
+      if (state.tool === 'freeselect') {
+        state.freeSelectPath = [{ x: p.x, y: p.y }];
+        previewFreeSelection(state.freeSelectPath);
+      }
     }
 
     function onPointerMove(event) {
@@ -1090,7 +1112,14 @@
         return;
       }
 
-      if (['line', 'rect', 'ellipse', 'roundrect', 'select'].includes(state.tool)) {
+      if (state.tool === 'freeselect') {
+        if (!state.freeSelectPath) state.freeSelectPath = [{ x: state.startX, y: state.startY }];
+        state.freeSelectPath.push({ x: p.x, y: p.y });
+        previewFreeSelection(state.freeSelectPath);
+        return;
+      }
+
+      if (['line', 'polygon', 'rect', 'ellipse', 'roundrect', 'select'].includes(state.tool)) {
         previewShape(state.startX, state.startY, p.x, p.y, state.tool);
       }
     }
@@ -1131,13 +1160,18 @@
         return;
       }
 
-      if (['line', 'rect', 'ellipse', 'roundrect'].includes(state.tool)) {
+      if (['line', 'polygon', 'rect', 'ellipse', 'roundrect'].includes(state.tool)) {
         commitShape(state.startX, state.startY, p.x, p.y, state.tool);
         pushHistory();
       }
 
       if (state.tool === 'select') {
         createSelection(state.startX, state.startY, p.x, p.y);
+      }
+
+      if (state.tool === 'freeselect') {
+        createFreeSelection(state.freeSelectPath || []);
+        state.freeSelectPath = null;
       }
 
       if (['pencil', 'brush', 'eraser', 'airbrush'].includes(state.tool)) {
@@ -1148,7 +1182,9 @@
         state.sprayTimer = null;
       }
 
-      pctx.clearRect(0, 0, preview.width, preview.height);
+      if (state.tool !== 'freeselect') {
+        pctx.clearRect(0, 0, preview.width, preview.height);
+      }
       state.pointerId = null;
     }
 
@@ -1181,6 +1217,26 @@
         target.moveTo(x1, y1);
         target.lineTo(x2, y2);
         target.stroke();
+        return;
+      }
+
+      if (kind === 'polygon') {
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+        const rx = Math.max(1, w / 2);
+        const ry = Math.max(1, h / 2);
+        const sides = 6;
+        target.beginPath();
+        for (let i = 0; i < sides; i += 1) {
+          const angle = -Math.PI / 2 + (i * Math.PI * 2) / sides;
+          const px = cx + Math.cos(angle) * rx;
+          const py = cy + Math.sin(angle) * ry;
+          if (i === 0) target.moveTo(px, py);
+          else target.lineTo(px, py);
+        }
+        target.closePath();
+        if (mode === 'fill' || mode === 'both') target.fill();
+        if (mode === 'stroke' || mode === 'both') target.stroke();
         return;
       }
 
@@ -1480,6 +1536,18 @@
       resizeCanvas(w, h);
     }
 
+    function resizeSkewPrompt() {
+      const widthPercent = Number(prompt('Resize width (%)', '100'));
+      if (!Number.isFinite(widthPercent) || widthPercent <= 0) return;
+      const heightPercent = Number(prompt('Resize height (%)', '100'));
+      if (!Number.isFinite(heightPercent) || heightPercent <= 0) return;
+      const skewX = Number(prompt('Skew horizontally (degrees, -89 to 89)', '0'));
+      if (!Number.isFinite(skewX) || Math.abs(skewX) >= 89) return;
+      const skewY = Number(prompt('Skew vertically (degrees, -89 to 89)', '0'));
+      if (!Number.isFinite(skewY) || Math.abs(skewY) >= 89) return;
+      resizeAndSkew(widthPercent / 100, heightPercent / 100, skewX, skewY);
+    }
+
     function resizeCanvas(newW, newH) {
       if (state.selection) stampSelection(false);
       const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1498,6 +1566,73 @@
       clearSelection(true);
       updateMeta();
       setStatus(`Canvas resized to ${canvas.width}x${canvas.height}`);
+    }
+
+    function resizeAndSkew(scaleX, scaleY, skewXDeg, skewYDeg) {
+      if (state.selection) stampSelection(false);
+
+      const src = document.createElement('canvas');
+      src.width = canvas.width;
+      src.height = canvas.height;
+      src.getContext('2d').drawImage(canvas, 0, 0);
+
+      const scaledW = clamp(Math.round(src.width * scaleX), 1, 8000);
+      const scaledH = clamp(Math.round(src.height * scaleY), 1, 8000);
+      const scaled = document.createElement('canvas');
+      scaled.width = scaledW;
+      scaled.height = scaledH;
+      scaled.getContext('2d').drawImage(src, 0, 0, scaledW, scaledH);
+
+      const skewX = Math.tan((skewXDeg * Math.PI) / 180);
+      const skewY = Math.tan((skewYDeg * Math.PI) / 180);
+      const offsetX = Math.abs(skewX) * scaledH;
+      const offsetY = Math.abs(skewY) * scaledW;
+      const outW = clamp(Math.ceil(scaledW + offsetX), 1, 8000);
+      const outH = clamp(Math.ceil(scaledH + offsetY), 1, 8000);
+
+      canvas.width = outW;
+      canvas.height = outH;
+      preview.width = outW;
+      preview.height = outH;
+      holder.style.width = `${outW}px`;
+      holder.style.height = `${outH}px`;
+
+      resetCanvas(state.bg);
+      ctx.save();
+      ctx.setTransform(1, skewY, skewX, 1, skewX < 0 ? offsetX : 0, skewY < 0 ? offsetY : 0);
+      ctx.drawImage(scaled, 0, 0);
+      ctx.restore();
+      pushHistory();
+      clearSelection(true);
+      updateMeta();
+      setStatus(`Resize/Skew applied: ${Math.round(scaleX * 100)}% x ${Math.round(scaleY * 100)}%, skew ${skewXDeg}°, ${skewYDeg}°`);
+    }
+
+    function cropToSelection() {
+      if (!state.selection) {
+        setStatus('Select an area first to crop');
+        return;
+      }
+
+      const s = state.selection;
+      const temp = document.createElement('canvas');
+      temp.width = s.w;
+      temp.height = s.h;
+      temp.getContext('2d').putImageData(s.imageData, 0, 0);
+
+      canvas.width = s.w;
+      canvas.height = s.h;
+      preview.width = s.w;
+      preview.height = s.h;
+      holder.style.width = `${s.w}px`;
+      holder.style.height = `${s.h}px`;
+
+      resetCanvas(state.bg);
+      ctx.drawImage(temp, 0, 0);
+      clearSelection(true);
+      pushHistory();
+      updateMeta();
+      setStatus(`Cropped to ${s.w}x${s.h}`);
     }
 
     function transformCanvas(transformer) {
@@ -1561,6 +1696,51 @@
       setStatus('Rotated 90° right');
     }
 
+    function rotateCanvasLeft() {
+      if (state.selection) stampSelection(false);
+      const src = document.createElement('canvas');
+      src.width = canvas.width;
+      src.height = canvas.height;
+      src.getContext('2d').drawImage(canvas, 0, 0);
+
+      const oldW = canvas.width;
+      const oldH = canvas.height;
+      canvas.width = oldH;
+      canvas.height = oldW;
+      preview.width = canvas.width;
+      preview.height = canvas.height;
+      holder.style.width = `${canvas.width}px`;
+      holder.style.height = `${canvas.height}px`;
+
+      ctx.save();
+      ctx.translate(0, canvas.height);
+      ctx.rotate(-Math.PI / 2);
+      ctx.drawImage(src, 0, 0);
+      ctx.restore();
+      pushHistory();
+      clearSelection(true);
+      updateMeta();
+      setStatus('Rotated 90° left');
+    }
+
+    function rotateCanvas180() {
+      if (state.selection) stampSelection(false);
+      const src = document.createElement('canvas');
+      src.width = canvas.width;
+      src.height = canvas.height;
+      src.getContext('2d').drawImage(canvas, 0, 0);
+
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.translate(canvas.width, canvas.height);
+      ctx.rotate(Math.PI);
+      ctx.drawImage(src, 0, 0);
+      ctx.restore();
+      pushHistory();
+      clearSelection(true);
+      setStatus('Rotated 180°');
+    }
+
     function applyFilter(type) {
       if (state.selection) stampSelection(false);
       const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -1589,6 +1769,94 @@
       state.bg = t;
       refreshSwatches();
       setStatus('Swapped foreground/background colors');
+    }
+
+    function pathFromPoints(target, points, offsetX = 0, offsetY = 0) {
+      if (!points.length) return;
+      target.beginPath();
+      target.moveTo(points[0].x + offsetX, points[0].y + offsetY);
+      for (let i = 1; i < points.length; i += 1) {
+        target.lineTo(points[i].x + offsetX, points[i].y + offsetY);
+      }
+      target.closePath();
+    }
+
+    function previewFreeSelection(points) {
+      pctx.clearRect(0, 0, preview.width, preview.height);
+      if (!points || points.length < 2) return;
+      pctx.save();
+      pctx.setLineDash([4, 3]);
+      pctx.strokeStyle = state.fg;
+      pctx.lineWidth = 1;
+      pathFromPoints(pctx, points);
+      pctx.stroke();
+      pctx.restore();
+    }
+
+    function createFreeSelection(points) {
+      pctx.clearRect(0, 0, preview.width, preview.height);
+      if (!points || points.length < 3) {
+        clearSelection(true);
+        return;
+      }
+
+      let minX = canvas.width;
+      let minY = canvas.height;
+      let maxX = 0;
+      let maxY = 0;
+      for (const pt of points) {
+        minX = Math.min(minX, pt.x);
+        minY = Math.min(minY, pt.y);
+        maxX = Math.max(maxX, pt.x);
+        maxY = Math.max(maxY, pt.y);
+      }
+
+      const x = clamp(Math.floor(minX), 0, canvas.width - 1);
+      const y = clamp(Math.floor(minY), 0, canvas.height - 1);
+      const w = clamp(Math.ceil(maxX - minX) + 1, 1, canvas.width - x);
+      const h = clamp(Math.ceil(maxY - minY) + 1, 1, canvas.height - y);
+      if (w < 2 || h < 2) {
+        clearSelection(true);
+        return;
+      }
+
+      const source = ctx.getImageData(x, y, w, h);
+      const masked = new Uint8ClampedArray(source.data);
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = w;
+      maskCanvas.height = h;
+      const mctx = maskCanvas.getContext('2d');
+      mctx.fillStyle = '#000';
+      pathFromPoints(mctx, points, -x, -y);
+      mctx.fill();
+      const maskData = mctx.getImageData(0, 0, w, h).data;
+
+      for (let i = 0; i < masked.length; i += 4) {
+        if (maskData[i + 3] === 0) {
+          masked[i + 3] = 0;
+        }
+      }
+
+      state.selection = {
+        x,
+        y,
+        w,
+        h,
+        imageData: new ImageData(masked, w, h)
+      };
+
+      if (!state.transparentSelection) {
+        ctx.save();
+        pathFromPoints(ctx, points);
+        ctx.clip();
+        ctx.fillStyle = state.bg;
+        ctx.fillRect(x, y, w, h);
+        ctx.restore();
+      }
+
+      renderSelection();
+      pushHistory();
+      setStatus(`Free-form selection ${w}x${h}`);
     }
 
     function selectionHit(event) {
