@@ -792,6 +792,7 @@
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const pctx = preview.getContext('2d', { willReadFrequently: true });
+    const STORAGE_KEY = 'web-paint-studio.session.v1';
 
     const state = {
       tool: 'pencil',
@@ -824,6 +825,7 @@
       textEditor: null,
       sprayTimer: null
     };
+    let persistTimer = null;
 
     const els = {
       toolGrid: document.getElementById('toolGrid'),
@@ -852,17 +854,21 @@
 
     function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 
-    function init() {
+    async function init() {
       resetCanvas(state.bg);
       buildTools();
       buildPalette();
       wireUI();
-      scheduleIdleTask(() => {
-        if (state.history.length === 0) pushHistory();
-      }, 1500);
+      const restored = await restoreSession();
+      if (!restored) {
+        scheduleIdleTask(() => {
+          if (state.history.length === 0) pushHistory();
+        }, 1500);
+        setStatus('Ready. Right-click palette for background color.');
+      }
       refreshSwatches();
+      syncControlsFromState();
       updateMeta();
-      setStatus('Ready. Right-click palette for background color.');
     }
 
     function scheduleIdleTask(fn, timeout = 1000) {
@@ -996,6 +1002,8 @@
         wireShortcuts();
         wireClipboard();
       }, 2000);
+
+      window.addEventListener('beforeunload', persistSession);
     }
 
     function wireMenus() {
@@ -1219,6 +1227,7 @@
     function refreshSwatches() {
       els.fgSwatch.style.background = state.fg;
       els.bgSwatch.style.background = state.bg;
+      queuePersistSession();
     }
 
     function setStatus(message) {
@@ -1227,6 +1236,111 @@
 
     function updateMeta() {
       els.titleMeta.textContent = `${state.fileName} - ${canvas.width}x${canvas.height}`;
+      queuePersistSession();
+    }
+
+    function syncControlsFromState() {
+      els.size.value = String(state.size);
+      els.fontSize.value = String(state.fontSize);
+      els.zoom.value = String(state.zoom);
+      els.shapeMode.value = state.shapeMode;
+      els.fillTolerance.value = String(state.fillTolerance);
+      els.sprayDensity.value = String(state.sprayDensity);
+      els.sprayRadius.value = String(state.sprayRadius);
+      els.sprayDensityValue.textContent = String(state.sprayDensity);
+      els.sprayRadiusValue.textContent = String(state.sprayRadius);
+      els.transparentSelection.checked = Boolean(state.transparentSelection);
+    }
+
+    function queuePersistSession() {
+      if (persistTimer) window.clearTimeout(persistTimer);
+      persistTimer = window.setTimeout(() => {
+        persistSession();
+      }, 700);
+    }
+
+    function persistSession() {
+      try {
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
+        const ex = exportCanvas.getContext('2d');
+        ex.drawImage(canvas, 0, 0);
+        if (state.selection) {
+          drawSelectionToContext(ex);
+        }
+        const payload = {
+          v: 1,
+          ts: Date.now(),
+          width: canvas.width,
+          height: canvas.height,
+          fileName: state.fileName,
+          fg: state.fg,
+          bg: state.bg,
+          size: state.size,
+          fontSize: state.fontSize,
+          zoom: state.zoom,
+          shapeMode: state.shapeMode,
+          fillTolerance: state.fillTolerance,
+          sprayDensity: state.sprayDensity,
+          sprayRadius: state.sprayRadius,
+          transparentSelection: state.transparentSelection,
+          image: exportCanvas.toDataURL('image/png')
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (_err) {
+        // Ignore storage errors (quota/private mode) and keep the editor usable.
+      }
+    }
+
+    async function restoreSession() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const payload = JSON.parse(raw);
+        if (!payload || !payload.image) return false;
+
+        const savedW = clamp(Number(payload.width) || canvas.width, 1, 5000);
+        const savedH = clamp(Number(payload.height) || canvas.height, 1, 5000);
+        if (savedW !== canvas.width || savedH !== canvas.height) {
+          canvas.width = savedW;
+          canvas.height = savedH;
+          preview.width = savedW;
+          preview.height = savedH;
+          holder.style.width = `${savedW}px`;
+          holder.style.height = `${savedH}px`;
+        }
+
+        state.fileName = (payload.fileName && String(payload.fileName).trim()) || 'Untitled';
+        state.fg = payload.fg || state.fg;
+        state.bg = payload.bg || state.bg;
+        state.size = clamp(Number(payload.size) || state.size, 1, 72);
+        state.fontSize = clamp(Number(payload.fontSize) || state.fontSize, 8, 128);
+        state.zoom = [0.5, 1, 2, 4, 8].includes(Number(payload.zoom)) ? Number(payload.zoom) : 1;
+        state.shapeMode = ['stroke', 'fill', 'both'].includes(payload.shapeMode) ? payload.shapeMode : 'stroke';
+        state.fillTolerance = clamp(Number(payload.fillTolerance) || state.fillTolerance, 0, 120);
+        state.sprayDensity = clamp(Number(payload.sprayDensity) || state.sprayDensity, 0, 100);
+        state.sprayRadius = clamp(Number(payload.sprayRadius) || state.sprayRadius, 0, 100);
+        state.transparentSelection = Boolean(payload.transparentSelection);
+
+        await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            resetCanvas(state.bg);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = payload.image;
+        });
+
+        setZoom(state.zoom);
+        pushHistory();
+        setStatus('Restored previous session');
+        return true;
+      } catch (_err) {
+        return false;
+      }
     }
 
     function startTextEditor(x, y) {
@@ -1693,6 +1807,7 @@
       state.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
       if (state.history.length > state.maxHistory) state.history.shift();
       state.future = [];
+      queuePersistSession();
     }
 
     function undo() {
@@ -1800,6 +1915,7 @@
       els.zoom.value = String(v);
       updateGrid();
       setStatus(`Zoom ${Math.round(v * 100)}%`);
+      queuePersistSession();
     }
 
     function changeZoom(delta) {
