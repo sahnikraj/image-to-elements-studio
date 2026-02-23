@@ -159,13 +159,14 @@
     .workspace {
       min-height: 0;
       display: grid;
-      grid-template-columns: 74px 1fr;
+      grid-template-columns: 148px 1fr;
     }
 
     .toolbar {
       border-right: 1px solid #8f8f8f;
       padding: 6px 6px 10px;
       overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .tool-grid {
@@ -244,6 +245,7 @@
       transform-origin: top left;
       image-rendering: pixelated;
       cursor: crosshair;
+      touch-action: none;
     }
 
     canvas {
@@ -252,6 +254,7 @@
       width: 100%;
       height: 100%;
       image-rendering: pixelated;
+      touch-action: none;
     }
 
     .selection {
@@ -262,6 +265,7 @@
       cursor: move;
       background: transparent;
       z-index: 20;
+      touch-action: none;
     }
 
     .text-editor {
@@ -346,8 +350,8 @@
     .hidden { display: none; }
 
     @media (max-width: 1024px) {
-      .workspace { grid-template-columns: 66px 1fr; }
-      .tool-grid { grid-template-columns: 1fr; }
+      .workspace { grid-template-columns: 124px 1fr; }
+      .tool-grid { grid-template-columns: repeat(2, 28px); }
       .palette { grid-template-columns: repeat(14, minmax(14px, 1fr)); }
       .titlebar { font-size: 11px; }
     }
@@ -534,7 +538,8 @@
       selectionDrag: null,
       transparentSelection: false,
       curveDraft: null,
-      textEditor: null
+      textEditor: null,
+      sprayTimer: null
     };
 
     const els = {
@@ -650,7 +655,7 @@
       });
 
       els.textEditor.addEventListener('blur', () => {
-        if (state.textEditor) commitTextEditor(true);
+        // Keep editor open on accidental mobile blur; commit on Enter, tool switch, or canvas click.
       });
 
       els.btnSnapshot.addEventListener('click', () => {
@@ -993,18 +998,23 @@
       }
 
       if (state.tool === 'pencil' || state.tool === 'brush' || state.tool === 'eraser') {
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.lineWidth = state.tool === 'brush' ? Math.max(2, state.size * 2) : state.size;
-        ctx.strokeStyle = state.tool === 'eraser' ? state.bg : state.fg;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
+        if (state.tool === 'brush') {
+          drawBrushDab(p.x, p.y);
+        } else {
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.lineWidth = state.size;
+          ctx.strokeStyle = state.tool === 'eraser' ? state.bg : state.fg;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        }
       }
 
       if (state.tool === 'airbrush') {
         sprayAt(p.x, p.y);
+        state.sprayTimer = window.setInterval(() => sprayAt(state.lastX, state.lastY), 35);
       }
 
       if (state.tool === 'curve' && state.curveDraft && state.curveDraft.awaitControl) {
@@ -1025,8 +1035,12 @@
       if (!state.drawing) return;
 
       if (state.tool === 'pencil' || state.tool === 'brush' || state.tool === 'eraser') {
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
+        if (state.tool === 'brush') {
+          drawBrushStroke(state.lastX, state.lastY, p.x, p.y);
+        } else {
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        }
         state.lastX = p.x;
         state.lastY = p.y;
         return;
@@ -1034,6 +1048,8 @@
 
       if (state.tool === 'airbrush') {
         sprayAt(p.x, p.y);
+        state.lastX = p.x;
+        state.lastY = p.y;
         return;
       }
 
@@ -1052,6 +1068,10 @@
     }
 
     function onPointerUp(event) {
+      if (state.sprayTimer && event.pointerId === state.pointerId) {
+        window.clearInterval(state.sprayTimer);
+        state.sprayTimer = null;
+      }
       if (state.selectionDrag) {
         endSelectionDrag();
         return;
@@ -1094,6 +1114,10 @@
 
       if (['pencil', 'brush', 'eraser', 'airbrush'].includes(state.tool)) {
         pushHistory();
+      }
+      if (state.sprayTimer) {
+        window.clearInterval(state.sprayTimer);
+        state.sprayTimer = null;
       }
 
       pctx.clearRect(0, 0, preview.width, preview.height);
@@ -1188,6 +1212,28 @@
       target.lineTo(x, y + rr);
       target.quadraticCurveTo(x, y, x + rr, y);
       target.closePath();
+    }
+
+    function drawBrushDab(x, y) {
+      const radius = Math.max(2, Math.floor(state.size * 1.4));
+      ctx.save();
+      ctx.fillStyle = state.fg;
+      ctx.globalAlpha = 0.95;
+      ctx.beginPath();
+      ctx.ellipse(x, y, radius, Math.max(2, radius * 0.7), Math.PI / 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+
+    function drawBrushStroke(x1, y1, x2, y2) {
+      const steps = Math.max(1, Math.floor(Math.hypot(x2 - x1, y2 - y1) / 2));
+      for (let i = 0; i <= steps; i += 1) {
+        const t = i / steps;
+        const x = Math.round(x1 + (x2 - x1) * t);
+        const y = Math.round(y1 + (y2 - y1) * t);
+        drawBrushDab(x, y);
+      }
     }
 
     function sprayAt(x, y) {
