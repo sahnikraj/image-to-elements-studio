@@ -6,10 +6,12 @@ A browser-based paint app inspired by classic MS Paint UI and interactions.
 - Classic windowed layout with title bar, menu bar, left tool panel, central canvas, and bottom palette.
 - Drawing tools: pencil, brush, airbrush, eraser, line, rectangle, ellipse, rounded rectangle.
 - Utility tools: fill bucket (with tolerance), text, eyedropper, selection tool.
+- Text tool behavior: click on canvas and type directly (no popup prompt).
 - Selection workflow: drag selection, move selection, copy/cut/paste selection, delete selection.
 - File actions: new, open image, save PNG, save JPG, paste image from clipboard.
 - Edit actions: undo/redo with history snapshots.
 - Image actions: resize canvas, flip horizontal/vertical, rotate 90° right, clear image.
+- Extra classic tools: curve and magnifier.
 - Color actions: swap FG/BG, custom color picker, invert colors, grayscale.
 - View actions: zoom controls, pixel grid toggle.
 - Keyboard shortcuts for common actions.

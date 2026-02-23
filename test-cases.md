@@ -21,7 +21,7 @@
 - Expect broader fill at higher tolerance.
 
 ## 6. Text and eyedropper
-- Place text with selected font size.
+- Place text by clicking canvas and typing directly (no popup).
 - Pick colors from canvas using eyedropper.
 
 ## 7. Selection workflow
@@ -39,6 +39,10 @@
 ## 10. Image transforms
 - Flip horizontal, flip vertical, rotate 90° right.
 - Validate orientation changes as expected.
+
+## 10b. Curve and magnifier
+- Draw first segment using curve tool, then drag again to bend it.
+- Use magnifier tool: left click should zoom in, right click should zoom out.
 
 ## 11. Filters
 - Apply invert colors and grayscale.

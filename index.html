@@ -264,6 +264,23 @@
       z-index: 20;
     }
 
+    .text-editor {
+      position: absolute;
+      min-width: 80px;
+      min-height: 24px;
+      resize: both;
+      overflow: auto;
+      border: 1px dashed #1f4dff;
+      background: rgba(255, 255, 255, 0.95);
+      color: #000;
+      padding: 2px 3px;
+      outline: none;
+      z-index: 30;
+      font-family: Tahoma, "MS Sans Serif", sans-serif;
+      white-space: pre;
+      user-select: text;
+    }
+
     .selection.dragging {
       opacity: 0.85;
     }
@@ -432,6 +449,7 @@
             <canvas id="paintCanvas" width="1200" height="700"></canvas>
             <canvas id="previewCanvas" width="1200" height="700"></canvas>
             <div class="selection" id="selection"></div>
+            <div id="textEditor" class="text-editor hidden" contenteditable="true"></div>
           </div>
         </div>
       </section>
@@ -455,20 +473,18 @@
     const TOOLS = [
       { id: 'select', icon: '⬚', title: 'Select' },
       { id: 'pencil', icon: '✎', title: 'Pencil' },
-      { id: 'brush', icon: '🖌', title: 'Brush' },
-      { id: 'airbrush', icon: '⠿', title: 'Airbrush' },
+      { id: 'brush', icon: '🖌', title: 'Paint Brush' },
+      { id: 'airbrush', icon: '⠿', title: 'Spray' },
       { id: 'eraser', icon: '⌫', title: 'Eraser' },
       { id: 'line', icon: '／', title: 'Line' },
+      { id: 'curve', icon: '∿', title: 'Curve' },
       { id: 'rect', icon: '▭', title: 'Rectangle' },
       { id: 'ellipse', icon: '◯', title: 'Ellipse' },
       { id: 'roundrect', icon: '▢', title: 'Rounded Rectangle' },
       { id: 'fill', icon: '▧', title: 'Fill Bucket' },
       { id: 'text', icon: 'A', title: 'Text' },
       { id: 'eyedropper', icon: '◉', title: 'Eyedropper' },
-      { id: 'undo', icon: '↶', title: 'Undo' },
-      { id: 'redo', icon: '↷', title: 'Redo' },
-      { id: 'open', icon: '📂', title: 'Open' },
-      { id: 'save', icon: '💾', title: 'Save PNG' }
+      { id: 'magnifier', icon: '🔍', title: 'Magnifier' }
     ];
 
     const COLORS = [
@@ -486,6 +502,7 @@
     const holder = document.getElementById('holder');
     const stage = document.getElementById('stage');
     const selectionEl = document.getElementById('selection');
+    const textEditorEl = document.getElementById('textEditor');
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const pctx = preview.getContext('2d', { willReadFrequently: true });
@@ -515,7 +532,9 @@
       selection: null,
       clipboardImage: null,
       selectionDrag: null,
-      transparentSelection: false
+      transparentSelection: false,
+      curveDraft: null,
+      textEditor: null
     };
 
     const els = {
@@ -537,7 +556,8 @@
       menuBar: document.getElementById('menuBar'),
       titleMeta: document.getElementById('titleMeta'),
       btnSnapshot: document.getElementById('btnSnapshot'),
-      transparentSelection: document.getElementById('transparentSelection')
+      transparentSelection: document.getElementById('transparentSelection'),
+      textEditor: textEditorEl
     };
 
     function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
@@ -618,6 +638,21 @@
         refreshSwatches();
       });
 
+      els.textEditor.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          commitTextEditor(true);
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          cancelTextEditor();
+        }
+      });
+
+      els.textEditor.addEventListener('blur', () => {
+        if (state.textEditor) commitTextEditor(true);
+      });
+
       els.btnSnapshot.addEventListener('click', () => {
         pushHistory();
         setStatus('Snapshot saved to undo history.');
@@ -663,6 +698,7 @@
 
     function wireShortcuts() {
       window.addEventListener('keydown', (event) => {
+        if (state.textEditor && event.target === els.textEditor) return;
         const cmd = event.ctrlKey || event.metaKey;
         const key = event.key.toLowerCase();
 
@@ -768,6 +804,7 @@
     }
 
     function dispatchAction(action) {
+      if (state.textEditor) commitTextEditor(true);
       switch (action) {
         case 'new': return newCanvas();
         case 'open': return els.fileInput.click();
@@ -800,11 +837,13 @@
     }
 
     function handleToolAction(toolId) {
-      if (toolId === 'undo') return undo();
-      if (toolId === 'redo') return redo();
-      if (toolId === 'open') return els.fileInput.click();
-      if (toolId === 'save') return saveImage('png');
-
+      if (state.textEditor && toolId !== 'text') {
+        commitTextEditor(true);
+      }
+      if (state.curveDraft && toolId !== 'curve') {
+        state.curveDraft = null;
+        pctx.clearRect(0, 0, preview.width, preview.height);
+      }
       state.tool = toolId;
       updateToolButtons();
       setStatus(`Tool: ${toolId}`);
@@ -814,7 +853,15 @@
       document.querySelectorAll('.tool').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.tool === state.tool);
       });
-      holder.style.cursor = state.tool === 'eyedropper' ? 'copy' : (state.tool === 'select' ? 'crosshair' : 'crosshair');
+      if (state.tool === 'eyedropper') {
+        holder.style.cursor = 'copy';
+      } else if (state.tool === 'magnifier') {
+        holder.style.cursor = 'zoom-in';
+      } else if (state.tool === 'select') {
+        holder.style.cursor = 'crosshair';
+      } else {
+        holder.style.cursor = 'crosshair';
+      }
     }
 
     function refreshSwatches() {
@@ -830,6 +877,60 @@
       els.titleMeta.textContent = `${state.fileName} - ${canvas.width}x${canvas.height}`;
     }
 
+    function startTextEditor(x, y) {
+      clearSelection(true);
+      const te = els.textEditor;
+      te.classList.remove('hidden');
+      te.style.left = `${x}px`;
+      te.style.top = `${y}px`;
+      te.style.width = '220px';
+      te.style.height = `${Math.max(24, state.fontSize + 8)}px`;
+      te.style.fontSize = `${state.fontSize}px`;
+      te.style.color = state.fg;
+      te.textContent = '';
+      state.textEditor = { x, y };
+      te.focus();
+
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(te);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      setStatus('Type text. Enter to commit, Esc to cancel.');
+    }
+
+    function commitTextEditor(push) {
+      if (!state.textEditor) return;
+      const te = els.textEditor;
+      const text = te.textContent || '';
+      if (text.trim().length) {
+        const x = parseInt(te.style.left, 10) || state.textEditor.x || 0;
+        const y = parseInt(te.style.top, 10) || state.textEditor.y || 0;
+        const width = Math.max(1, te.offsetWidth);
+        const lineHeight = state.fontSize + 4;
+        ctx.fillStyle = state.fg;
+        ctx.font = `${state.fontSize}px Tahoma, sans-serif`;
+        const lines = text.replace(/\r/g, '').split('\n');
+        lines.forEach((line, idx) => {
+          const ly = y + state.fontSize + idx * lineHeight;
+          ctx.fillText(line, x, ly, width);
+        });
+        if (push) pushHistory();
+      }
+      te.textContent = '';
+      te.classList.add('hidden');
+      state.textEditor = null;
+    }
+
+    function cancelTextEditor() {
+      if (!state.textEditor) return;
+      els.textEditor.textContent = '';
+      els.textEditor.classList.add('hidden');
+      state.textEditor = null;
+      setStatus('Text canceled');
+    }
+
     function toCanvasPoint(event) {
       const rect = holder.getBoundingClientRect();
       const x = Math.floor((event.clientX - rect.left) / state.zoom);
@@ -841,9 +942,28 @@
     }
 
     function onPointerDown(event) {
+      if (state.textEditor && event.target !== els.textEditor && !els.textEditor.contains(event.target)) {
+        commitTextEditor(true);
+      }
+
       if (state.selection && selectionHit(event)) return;
 
       const p = toCanvasPoint(event);
+
+      if (state.tool === 'magnifier') {
+        if (event.button === 2) {
+          changeZoom(-1);
+        } else {
+          changeZoom(1);
+        }
+        return;
+      }
+
+      if (state.tool === 'text') {
+        startTextEditor(p.x, p.y);
+        return;
+      }
+
       state.drawing = true;
       state.pointerId = event.pointerId;
       holder.setPointerCapture(event.pointerId);
@@ -872,18 +992,6 @@
         return;
       }
 
-      if (state.tool === 'text') {
-        const text = prompt('Enter text');
-        if (text) {
-          ctx.fillStyle = state.fg;
-          ctx.font = `${state.fontSize}px Tahoma, sans-serif`;
-          ctx.fillText(text, p.x, p.y);
-          pushHistory();
-        }
-        state.drawing = false;
-        return;
-      }
-
       if (state.tool === 'pencil' || state.tool === 'brush' || state.tool === 'eraser') {
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
@@ -897,6 +1005,11 @@
 
       if (state.tool === 'airbrush') {
         sprayAt(p.x, p.y);
+      }
+
+      if (state.tool === 'curve' && state.curveDraft && state.curveDraft.awaitControl) {
+        state.startX = p.x;
+        state.startY = p.y;
       }
     }
 
@@ -924,6 +1037,15 @@
         return;
       }
 
+      if (state.tool === 'curve') {
+        if (state.curveDraft && state.curveDraft.awaitControl) {
+          previewCurve(state.curveDraft, p.x, p.y);
+        } else {
+          previewShape(state.startX, state.startY, p.x, p.y, 'line');
+        }
+        return;
+      }
+
       if (['line', 'rect', 'ellipse', 'roundrect', 'select'].includes(state.tool)) {
         previewShape(state.startX, state.startY, p.x, p.y, state.tool);
       }
@@ -939,6 +1061,27 @@
 
       const p = toCanvasPoint(event);
       state.drawing = false;
+
+      if (state.tool === 'curve') {
+        if (!state.curveDraft) {
+          state.curveDraft = {
+            x1: state.startX,
+            y1: state.startY,
+            x2: p.x,
+            y2: p.y,
+            awaitControl: true
+          };
+          previewShape(state.curveDraft.x1, state.curveDraft.y1, state.curveDraft.x2, state.curveDraft.y2, 'line');
+          setStatus('Curve step 2: drag to bend curve');
+        } else {
+          commitCurve(state.curveDraft, p.x, p.y);
+          state.curveDraft = null;
+          pushHistory();
+          setStatus('Curve drawn');
+        }
+        state.pointerId = null;
+        return;
+      }
 
       if (['line', 'rect', 'ellipse', 'roundrect'].includes(state.tool)) {
         commitShape(state.startX, state.startY, p.x, p.y, state.tool);
@@ -1008,6 +1151,28 @@
         if (mode === 'fill' || mode === 'both') target.fill();
         if (mode === 'stroke' || mode === 'both') target.stroke();
       }
+    }
+
+    function previewCurve(curve, controlX, controlY) {
+      pctx.clearRect(0, 0, preview.width, preview.height);
+      pctx.strokeStyle = state.fg;
+      pctx.lineWidth = state.size;
+      pctx.setLineDash([5, 3]);
+      pctx.beginPath();
+      pctx.moveTo(curve.x1, curve.y1);
+      pctx.quadraticCurveTo(controlX, controlY, curve.x2, curve.y2);
+      pctx.stroke();
+      pctx.setLineDash([]);
+    }
+
+    function commitCurve(curve, controlX, controlY) {
+      ctx.strokeStyle = state.fg;
+      ctx.lineWidth = state.size;
+      ctx.beginPath();
+      ctx.moveTo(curve.x1, curve.y1);
+      ctx.quadraticCurveTo(controlX, controlY, curve.x2, curve.y2);
+      ctx.stroke();
+      pctx.clearRect(0, 0, preview.width, preview.height);
     }
 
     function roundedRectPath(target, x, y, w, h, r) {
