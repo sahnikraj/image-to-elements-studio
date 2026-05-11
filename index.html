@@ -11,10 +11,9 @@
     gtag("js", new Date());
     gtag("config", "G-FL7CQ5SXS1");
   </script>
-  <title>MS Paint Online - Free MS Paint Online Tool with Additional Features</title>
-  <meta name="description" content="Use MS Paint Online for free in your browser. A beginner-friendly paint online tool with classic drawing tools, selection, shapes, text, spray, color picker, zoom, and save options." />
+  <title>MS Paint Online | Free Online Paint Program for Drawing and Quick Edits</title>
+  <meta name="description" content="Use MS Paint Online for free in your browser. Draw, annotate screenshots, crop images, add text, and save files with a classic Paint-style interface." />
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
-  <meta name="keywords" content="paint, ms paint, js paint, jspaint, mspaint, paint javascript, paint online, online paint, paint.js, ms paint online, paint web, paint app online, online paint tool, free paint online, microsoft paint online, online microsoft paint, online ms paint, js paint online, mspaint online, paint online free, jspaint app, paint website, paint program, paint browser, windows paint, paintjs, jspaitn, jspait, mspaitn, psint, painr, paimt, paint onlune, paint onoine, mspainy, oaint, pai nt" />
   <meta name="theme-color" content="#c0c0c0" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -26,12 +25,31 @@
   <link rel="alternate" hreflang="en" href="https://mspaint.online/" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://mspaint.online/" />
-  <meta property="og:title" content="MS Paint Online - Free MS Paint Online Tool with Additional Features" />
-  <meta property="og:description" content="Free online MS Paint alternative in your browser with classic tools, beginner-friendly controls, and no install needed." />
+  <meta property="og:title" content="MS Paint Online | Free Online Paint Program for Drawing and Quick Edits" />
+  <meta property="og:description" content="Open a free online paint program in your browser for drawing, screenshot annotation, crop, text, and simple image editing." />
+  <meta property="og:image" content="https://mspaint.online/apple-touch-icon.png" />
   <meta property="og:site_name" content="MSPaint.Online" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="MS Paint Online - Free MS Paint Online Tool with Additional Features" />
-  <meta name="twitter:description" content="Draw, edit, and save instantly with a free MS Paint online tool." />
+  <meta name="twitter:title" content="MS Paint Online | Free Online Paint Program for Drawing and Quick Edits" />
+  <meta name="twitter:description" content="Draw, edit, crop, annotate, and save instantly with a free MS Paint online tool." />
+  <meta name="twitter:image" content="https://mspaint.online/apple-touch-icon.png" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "MSPaint.Online",
+      "url": "https://mspaint.online/"
+    }
+  </script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "MS Paint Online",
+      "url": "https://mspaint.online/",
+      "description": "Free online paint program for drawing, screenshot annotation, crop, text, and simple image editing."
+    }
+  </script>
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -41,7 +59,7 @@
       "applicationCategory": "GraphicsApplication",
       "operatingSystem": "Any",
       "url": "https://mspaint.online/",
-      "description": "Free MS Paint online tool with classic paint controls and extra features for browser-based drawing and editing.",
+      "description": "Free MS Paint online tool with classic paint controls for browser-based drawing, screenshot markup, crop, and quick image editing.",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -56,7 +74,7 @@
       "@context": "https://schema.org",
       "@type": "HowTo",
       "name": "How to use MS Paint Online",
-      "description": "Beginner steps to draw and save using MS Paint Online.",
+      "description": "Beginner steps to draw, annotate, and save using MS Paint Online.",
       "totalTime": "PT2M",
       "step": [
         {
@@ -76,13 +94,13 @@
         },
         {
           "@type": "HowToStep",
-          "name": "Adjust view and tools",
-          "text": "Use zoom and shape options for better control."
+          "name": "Adjust or annotate the image",
+          "text": "Use zoom, shape, selection, and text tools to refine your drawing or explain part of an image."
         },
         {
           "@type": "HowToStep",
           "name": "Save your file",
-          "text": "Use Save options to download your drawing."
+          "text": "Use Save options to download your drawing or edited image."
         }
       ]
     }
@@ -132,14 +150,15 @@
     body {
       margin: 0;
       height: 100%;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
       background: var(--ui-bg);
       color: var(--text);
       user-select: none;
     }
 
     .window {
-      height: 100%;
+      min-height: 100%;
       display: grid;
       grid-template-rows: auto 1fr auto auto;
       border-top: 2px solid var(--shadow-light);
@@ -408,7 +427,8 @@
       position: absolute;
       inset: 0;
       width: 100%;
-      height: 100%;
+      min-height: 100vh;
+      height: 100vh;
       image-rendering: pixelated;
       touch-action: none;
     }
@@ -506,6 +526,77 @@
 
     .hidden { display: none; }
 
+    .seo-content {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 36px 18px 56px;
+      background: #f4f6fb;
+      color: #1a1f2b;
+      user-select: text;
+    }
+
+    .seo-content section {
+      margin-bottom: 28px;
+    }
+
+    .seo-content h1,
+    .seo-content h2 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .seo-content h1 {
+      font-size: 34px;
+    }
+
+    .seo-content h2 {
+      font-size: 24px;
+    }
+
+    .seo-content p,
+    .seo-content li {
+      font-family: Tahoma, "MS Sans Serif", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      margin: 0 0 14px;
+      color: #465066;
+    }
+
+    .seo-content ol,
+    .seo-content ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    .seo-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .seo-card {
+      border: 1px solid #d9dfef;
+      background: #ffffff;
+      padding: 18px;
+    }
+
+    .seo-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .seo-links a {
+      color: #1b326f;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .seo-links a:hover {
+      text-decoration: underline;
+    }
+
     @media (max-width: 1024px) {
       .workspace { grid-template-columns: 88px 1fr; }
       .tool-grid { grid-template-columns: repeat(2, 28px); }
@@ -513,6 +604,20 @@
       .tool-config { font-size: 10px; }
       .header-links { gap: 8px; font-size: 11px; }
       .header-meta { font-size: 11px; }
+    }
+
+    @media (max-width: 700px) {
+      .window {
+        height: auto;
+      }
+
+      .seo-content h1 {
+        font-size: 28px;
+      }
+
+      .seo-content h2 {
+        font-size: 22px;
+      }
     }
   </style>
 </head>
@@ -639,6 +744,71 @@
       <span id="statusRight">x:0 y:0</span>
     </div>
   </div>
+
+  <main class="seo-content">
+    <section>
+      <h1>MS Paint Online for Fast Drawing, Annotation, and Simple Image Editing</h1>
+      <p>MS Paint Online is a free online paint program built for people who want familiar editing controls in a browser. You can sketch on a blank canvas, open an image, crop it, add text, draw shapes, annotate screenshots, and save the result without installing anything. The experience is intentionally simple, which makes it useful for beginners and efficient for repeat tasks.</p>
+      <p>Many visitors arrive here looking for a classic Microsoft Paint feeling on the web. That usually means they want something approachable, not overloaded. This tool fits that need by keeping the common actions close at hand: pencil, brush, spray, fill, selection, crop, rotate, flip, zoom, and save. For everyday jobs, that is often the right level of complexity.</p>
+    </section>
+
+    <section>
+      <h2>What you can do here</h2>
+      <div class="seo-grid">
+        <div class="seo-card">
+          <h2>Draw from scratch</h2>
+          <p>Use pencil, brush, spray, fill, line, curve, polygon, and shape tools for sketches, diagrams, and rough visual ideas.</p>
+        </div>
+        <div class="seo-card">
+          <h2>Edit existing images</h2>
+          <p>Open a file, crop it, rotate it, flip it, add notes, or make a quick correction without moving into heavier editing software.</p>
+        </div>
+        <div class="seo-card">
+          <h2>Annotate screenshots</h2>
+          <p>Add arrows, circles, labels, and highlights for bug reports, tutorials, client feedback, and internal team communication.</p>
+        </div>
+        <div class="seo-card">
+          <h2>Save quickly</h2>
+          <p>Export your work as PNG or JPG so it is easy to share, upload, attach to docs, or keep as a lightweight draft.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How to use MS Paint Online</h2>
+      <ol>
+        <li>Open the tool in your browser and start with a blank canvas or open an image from your device.</li>
+        <li>Choose a drawing, shape, fill, selection, or text tool depending on the edit you want to make.</li>
+        <li>Use colors, zoom, and size controls to refine the image or add annotations.</li>
+        <li>Crop, rotate, or flip the image if you need a fast cleanup step before saving.</li>
+        <li>Download the finished result as a PNG or JPG file.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Why people use an online paint program</h2>
+      <p>The biggest advantage is speed. A browser paint tool is ready when you need a fast visual answer, not a full creative session. That matters for teachers creating simple examples, teams marking up interface screenshots, students building diagrams, and casual users who only need one quick image edit. A classic Paint-style interface also reduces friction because many users already understand how the tools behave.</p>
+      <p>This site is especially useful for the small visual jobs that happen all the time: cropping a screenshot, pointing at a bug, drawing a quick concept, adding text to a rough image, or cleaning up a file before sharing it. Those tasks are common, which is why this kind of tool keeps earning search demand.</p>
+    </section>
+
+    <section>
+      <h2>Helpful guides and task pages</h2>
+      <div class="seo-links">
+        <a href="/what-it-is.html">What is MS Paint Online?</a>
+        <a href="/key-features.html">Key features</a>
+        <a href="/use-cases.html">Popular use cases</a>
+        <a href="/open-image-online.html">Open image online</a>
+        <a href="/crop-image-online.html">Crop image online</a>
+        <a href="/annotate-screenshot-online.html">Annotate screenshot online</a>
+        <a href="/faq.html">FAQ</a>
+      </div>
+    </section>
+
+    <section>
+      <h2>Privacy and session behavior</h2>
+      <p>The app is designed for straightforward browser use, and it restores your most recent session in the same browser unless site data is cleared. That helps when you close the tab accidentally or want to continue a quick draft later. It is a practical detail, but it also matters for user trust because people want to know whether a lightweight tool will remember their work while they are still using the same device.</p>
+    </section>
+  </main>
 
   <script>
     const TOOL_ICON = {
