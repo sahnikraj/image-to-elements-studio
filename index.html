@@ -1071,7 +1071,8 @@
 
       els.btnSnapshot.addEventListener('click', () => {
         pushHistory();
-        setStatus('Snapshot saved to undo history.');
+        saveImage('png', 'snapshot');
+        setStatus('Snapshot saved to undo history and downloaded as PNG.');
       });
 
       wireMenus();
@@ -1964,7 +1965,7 @@
       setStatus(`Opened ${file.name}`);
     }
 
-    function saveImage(type) {
+    function saveImage(type, namePrefix) {
       const mime = type === 'jpg' ? 'image/jpeg' : 'image/png';
       const ext = type === 'jpg' ? 'jpg' : 'png';
       let dataUrl = '';
@@ -1981,7 +1982,8 @@
       }
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = `${state.fileName || 'drawing'}-${Date.now()}.${ext}`;
+      const baseName = (namePrefix && String(namePrefix).trim()) || state.fileName || 'drawing';
+      a.download = `${baseName}-${Date.now()}.${ext}`;
       a.click();
       setStatus(`Saved ${ext.toUpperCase()}`);
     }
